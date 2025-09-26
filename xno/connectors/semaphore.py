@@ -1,3 +1,5 @@
+import logging
+
 import redis
 import time
 import uuid
@@ -29,8 +31,8 @@ class DistributedSemaphore:
         """
         Try to acquire one of the semaphore slots.
         """
+        logging.info(f'Acquiring semaphore {self.key}')
         start_time = time.time()
-
         while time.time() - start_time < self.timeout:
             now = int(time.time() * 1000)
             pipeline = self.redis_client.pipeline()
@@ -50,16 +52,19 @@ class DistributedSemaphore:
 
             # if failed, cleanup our token
             self.redis_client.zrem(self.key, self.value)
+            logging.warning(f"Semaphore full, retrying acquire for key {self.key} after {self.retry_interval}s")
             time.sleep(self.retry_interval)
 
         return False
 
     def release(self):
         """Release semaphore slot."""
+        logging.debug(f"Releasing semaphore {self.key}")
         self.redis_client.zrem(self.key, self.value)
 
     def __enter__(self):
         if not self.acquire():
+            logging.error(f"Semaphore {self.key} not acquired.")
             raise TimeoutError(f"Could not acquire semaphore for key {self.key}")
         return self
 

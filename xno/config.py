@@ -1,5 +1,6 @@
 import os
 from urllib.parse import quote_plus
+import logging
 
 
 class AppConfig:
@@ -47,3 +48,9 @@ class AppConfig:
 
 
 settings = AppConfig()
+
+# Set up logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)

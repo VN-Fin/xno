@@ -1,7 +1,3 @@
 from xno.config import settings
-import logging
+from xno.data.ohlcv import OhlcvDataManager
 
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)

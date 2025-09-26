@@ -1,0 +1,10 @@
+[project]
+name = "xno"
+version = "0.1.0"
+description = "Add your description here"
+requires-python = ">=3.13"
+dependencies = [
+    "psycopg2-binary>=2.9.10",
+    "redis>=6.4.0",
+    "sqlalchemy>=2.0.43",
+]

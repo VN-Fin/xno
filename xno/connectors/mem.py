@@ -35,7 +35,7 @@ class DistributedSemaphore:
         start_time = time.time()
         while time.time() - start_time < self.timeout:
             now = int(time.time() * 1000)
-            pipeline = self.redis_client.pipeline()
+            pipeline = RedisClient.pipeline()
 
             # remove expired holders
             pipeline.zremrangebyscore(self.key, 0, now - self.ttl * 1000)
@@ -51,7 +51,7 @@ class DistributedSemaphore:
                 return True
 
             # if failed, cleanup our token
-            self.redis_client.zrem(self.key, self.value)
+            RedisClient.zrem(self.key, self.value)
             logging.warning(f"Semaphore full, retrying acquire for key {self.key} after {self.retry_interval}s")
             time.sleep(self.retry_interval)
 
@@ -60,7 +60,7 @@ class DistributedSemaphore:
     def release(self):
         """Release semaphore slot."""
         logging.debug(f"Releasing semaphore {self.key}")
-        self.redis_client.zrem(self.key, self.value)
+        RedisClient.zrem(self.key, self.value)
 
     def __enter__(self):
         if not self.acquire():

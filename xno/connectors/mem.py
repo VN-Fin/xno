@@ -5,9 +5,15 @@ import time
 import uuid
 from xno import settings
 
-RedisClient = redis.StrictRedis(
-    **settings.redis_config
-)
+RedisClient: redis.StrictRedis | None = None
+
+def connect_redis():
+    global RedisClient
+    logging.info("Connecting to Redis")
+    RedisClient = redis.StrictRedis(
+        **settings.redis_config
+    )
+
 
 class DistributedSemaphore:
 

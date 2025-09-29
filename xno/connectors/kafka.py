@@ -11,13 +11,15 @@ def init_kafka_producer():
         KafkaProducer = Producer(settings.kafka_producer_config)
 
 
-def init_kafka_consumer():
+def init_kafka_consumer(kafka_topics):
     global KafkaConsumer
     if KafkaConsumer is None:
         KafkaConsumer = Consumer(settings.kafka_consumer_config)
-        KafkaConsumer.subscribe(settings.kafka_topics)
+        KafkaConsumer.subscribe(kafka_topics)
 
 if __name__ == "__main__":
     init_kafka_producer()
-    init_kafka_consumer()
+    # init_kafka_consumer()
+    KafkaProducer.produce(topic="ping.dev", key="test_key", value="test_value")
+    KafkaProducer.flush()
     print("Kafka Producer and Consumer initialized.")

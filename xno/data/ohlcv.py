@@ -1,21 +1,25 @@
 import logging
-import pandas
 import threading
 import time
+
+import pandas as pd
+from tqdm import tqdm
+
 from xno.connectors import DistributedSemaphore
 from xno.connectors.postgresql import SqlSession
 
 # Template DataFrame
-_ohlcv_data_template = pandas.DataFrame({
-    "time": pandas.Series([], dtype="datetime64[ns]"),
-    "open": pandas.Series([], dtype="float32"),
-    "high": pandas.Series([], dtype="float32"),
-    "low": pandas.Series([], dtype="float32"),
-    "close": pandas.Series([], dtype="float32"),
-    "volume": pandas.Series([], dtype="float32"),
+_ohlcv_data_template = pd.DataFrame({
+    "time": pd.Series([], dtype="datetime64[ns]"),
+    "open": pd.Series([], dtype="float32"),
+    "high": pd.Series([], dtype="float32"),
+    "low": pd.Series([], dtype="float32"),
+    "close": pd.Series([], dtype="float32"),
+    "volume": pd.Series([], dtype="float32"),
 }).set_index("time")
 
 consume_buffer_interval = 20 # seconds
+load_chunk_size = 1000  # rows
 load_data_query = """
         SELECT time, open, high, low, close, volume
         FROM trading.stock_ohlcv_history
@@ -49,23 +53,32 @@ class OhlcvData:
             self.buffer.append(data)
 
     def load_data(self, from_time: str, to_time: str):
-        with DistributedSemaphore() as semaphore:
+        params = {
+            "symbol": self.symbol,
+            "resolution": self.resolution,
+            "from_time": from_time,
+            "to_time": to_time,
+        }
+        with DistributedSemaphore(ttl=600):
             with SqlSession() as session:
-                query = load_data_query.format(
-                    symbol=repr(self.symbol),
-                    resolution=repr(self.resolution),
-                    from_time=repr(from_time),
-                    to_time=repr(to_time),
+                chunks = pd.read_sql_query(
+                    load_data_query,
+                    session.bind,
+                    params=params,
+                    chunksize=load_chunk_size,
+                    dtype=_ohlcv_data_template.dtype,
                 )
-                df = pandas.read_sql(query, session.bind)
-                if not df.empty:
-                    df.set_index("time", inplace=True)
-                    with self.lock:
-                        self.data = pandas.concat([self.data, df])
-                        self.data = self.data[~self.data.index.duplicated(keep="last")]
-                        self.data.sort_index(inplace=True)
+                for chunk_df in tqdm(chunks):
+                    logging.info("Yielding chunk of size %d", len(chunk_df))
+                    if not chunk_df.empty:
+                        chunk_df.set_index("time", inplace=True)
+                        with self.lock:
+                            self.data = pd.concat([self.data, chunk_df])
+                            # Drop duplicates by time
+                            self.data = self.data[~self.data.index.duplicated(keep="last")]
+                            self.data.sort_index(inplace=True)
 
-    def get_data(self) -> pandas.DataFrame:
+    def get_data(self) -> pd.DataFrame:
         """Return a copy of the current DataFrame."""
         with self.lock:
             return self.data.copy()
@@ -79,12 +92,12 @@ class OhlcvData:
             time.sleep(consume_buffer_interval)
             with self.lock:
                 if self.buffer:
-                    df = pandas.DataFrame(self.buffer)
+                    df = pd.DataFrame(self.buffer)
                     self.buffer = []
                     if not df.empty:
                         df.set_index("time", inplace=True)
                         # Merge new data
-                        self.data = pandas.concat([self.data, df])
+                        self.data = pd.concat([self.data, df])
                         # Drop duplicates by time
                         self.data = self.data[~self.data.index.duplicated(keep="last")]
                         self.data.sort_index(inplace=True)

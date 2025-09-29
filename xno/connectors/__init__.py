@@ -1,1 +1,1 @@
-from xno.connectors.semaphore import DistributedSemaphore
+from xno.connectors.mem import DistributedSemaphore

@@ -7,7 +7,7 @@ from xno import settings
 
 RedisClient: redis.StrictRedis | None = None
 
-def connect_redis():
+def init_redis():
     global RedisClient
     logging.info("Connecting to Redis")
     RedisClient = redis.StrictRedis(

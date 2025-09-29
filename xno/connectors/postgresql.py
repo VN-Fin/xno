@@ -7,7 +7,7 @@ import logging
 
 SqlSession: sessionmaker | None = None
 
-def connect_postgresql():
+def init_postgresql():
     global SqlSession
     engine = create_engine(
         settings.postgresql_url,

@@ -35,8 +35,8 @@ class AppConfig:
         }
 
     # Kafka config
-    kafka_bootstrap_servers: str = os.environ['KAFKA_SERVERS']
-    kafka_topic: str = os.environ['KAFKA_TOPIC']
+    kafka_bootstrap_servers: str = os.environ.get('KAFKA_SERVERS', 'localhost:9092')
+    kafka_topic: str = os.environ.get('KAFKA_TOPIC', 'xno_data_topic')
     kafka_default_group_id: str = 'xno-data-consumer-group'
     @property
     def kafka_consumer_config(self):

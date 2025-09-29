@@ -9,10 +9,11 @@ RedisClient: redis.StrictRedis | None = None
 
 def init_redis():
     global RedisClient
-    logging.info("Connecting to Redis")
-    RedisClient = redis.StrictRedis(
-        **settings.redis_config
-    )
+    if RedisClient is None:
+        logging.info("Connecting to Redis")
+        RedisClient = redis.StrictRedis(
+            **settings.redis_config
+        )
 
 
 class DistributedSemaphore:
@@ -27,7 +28,7 @@ class DistributedSemaphore:
         Redis-based distributed semaphore (multiple concurrent holders).
         """
         self.key = settings.semaphore_max_permits
-        self.max_leases = settings.max_leases
+        self.max_leases = settings.semaphore_max_permits
         self.ttl = ttl
         self.retry_interval = retry_interval
         self.timeout = timeout
@@ -79,10 +80,19 @@ class DistributedSemaphore:
 
 
 # USAGE
-def query_postgres():
-    print("Running query...")
-    time.sleep(2)
+if __name__ == "__main__":
+    init_redis()
+    def query_postgres():
+        print("Running query...")
+        time.sleep(2)
 
-with DistributedSemaphore():
-    query_postgres()
-    print("Done, released slot")
+    # with DistributedSemaphore():
+    #     query_postgres()
+    #     print("Done, released slot")
+
+    with RedisClient as session:
+        logging.info("Setting a test value in Redis")
+        session.set('test', 'value')
+
+    with RedisClient as session:
+        logging.info(session.get('test'))

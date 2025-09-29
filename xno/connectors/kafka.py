@@ -7,10 +7,17 @@ KafkaConsumer: Consumer | None = None
 
 def init_kafka_producer():
     global KafkaProducer
-    KafkaProducer = Producer(settings.kafka_producer_config)
+    if KafkaProducer is None:
+        KafkaProducer = Producer(settings.kafka_producer_config)
 
 
 def init_kafka_consumer():
     global KafkaConsumer
-    KafkaConsumer = Consumer(settings.kafka_consumer_config)
-    KafkaConsumer.subscribe(settings.kafka_topics)
+    if KafkaConsumer is None:
+        KafkaConsumer = Consumer(settings.kafka_consumer_config)
+        KafkaConsumer.subscribe(settings.kafka_topics)
+
+if __name__ == "__main__":
+    init_kafka_producer()
+    init_kafka_consumer()
+    print("Kafka Producer and Consumer initialized.")

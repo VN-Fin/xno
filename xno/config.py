@@ -24,12 +24,16 @@ class AppConfig:
     redis_host: str = os.environ.get('REDIS_HOST', 'localhost')
     redis_port: int = os.environ.get('REDIS_PORT', 6379)
     redis_db: int = os.environ.get('REDIS_DB', 0)
+    redis_user: str = os.environ.get('REDIS_USER', 'default')
+    redis_password: str = os.environ.get('REDIS_PASSWORD', None)
     semaphore_key: str = "xno_data_semaphore"
     semaphore_max_permits: int = 5  # max 5 operations
     @property
     def redis_config(self):
         return {
             'host': self.redis_host,
+            'username': self.redis_user,
+            'password': self.redis_password,
             'port': self.redis_port,
             'db': self.redis_db
         }

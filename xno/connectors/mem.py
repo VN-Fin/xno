@@ -5,26 +5,20 @@ import time
 import uuid
 from xno import settings
 
-RedisClient: redis.StrictRedis | None = None
 
-def init_redis():
-    global RedisClient
-    if RedisClient is None:
-        logging.info("Connecting to Redis")
-        RedisClient = redis.StrictRedis(
-            **settings.redis_config
-        )
-    # Test connection
-    try:
-        RedisClient.ping()
-        logging.info("Connected to Redis successfully.")
-    except redis.ConnectionError as e:
-        logging.error(f"Failed to connect to Redis: {e}")
-        raise RuntimeError("Failed to connect to Redis.")
+RedisClient = redis.StrictRedis(
+    **settings.redis_config
+)
+# Test connection
+try:
+    RedisClient.ping()
+    logging.info("Connected to Redis successfully.")
+except redis.ConnectionError as e:
+    logging.error(f"Failed to connect to Redis: {e}")
+    raise RuntimeError("Failed to connect to Redis.")
 
 
 class DistributedSemaphore:
-
     def __init__(
             self,
             ttl: int = 30,
@@ -88,7 +82,6 @@ class DistributedSemaphore:
 
 # USAGE
 if __name__ == "__main__":
-    init_redis()
     def query_postgres():
         print("Running query...")
         time.sleep(2)

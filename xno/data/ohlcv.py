@@ -5,8 +5,8 @@ import time
 import pandas as pd
 from tqdm import tqdm
 
-from xno.connectors import DistributedSemaphore
-from xno.connectors.postgresql import SqlSession
+from xno.connectors.mem import DistributedSemaphore
+from xno.connectors.sql import SqlSession
 
 # Template DataFrame
 _ohlcv_data_template = pd.DataFrame({

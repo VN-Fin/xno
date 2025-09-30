@@ -1,4 +1,4 @@
-from xno import OhlcvDataManager
+from xno.data import OhlcvDataManager
 
 if __name__ == "__main__":
     OhlcvDataManager.get_instance("HPG", "m").load_data(

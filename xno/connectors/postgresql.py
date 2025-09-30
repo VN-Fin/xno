@@ -7,7 +7,7 @@ from xno import settings
 import logging
 
 
-SqlSession: Optional[sessionmaker] = None
+SqlSession = None
 
 
 def init_postgresql():
@@ -21,22 +21,11 @@ def init_postgresql():
             pool_timeout=30,
             pool_recycle=1_800,
             pool_pre_ping=True,
-            echo=False,
         )
-        logging.info("Connecting to PSQL")
-        SqlSession = sessionmaker(
-            bind=engine,
-            autoflush=False,
-            autocommit=False
-        )
-
-    # Test connection
-    if SqlSession is not None:
-        with SqlSession() as session:
-            session.execute(text("SELECT 1"))
-            logging.info("PostgreSQL connection test successful.")
-    else:
-        raise RuntimeError("Failed to initialize PostgreSQL session.")
+        SqlSession = sessionmaker(bind=engine, autoflush=False, autocommit=False)
+        with engine.connect() as conn:
+            conn.execute(text("SELECT 1"))
+        logging.info("PostgreSQL connection test successful.")
 
 
 if __name__ == "__main__":

@@ -30,6 +30,14 @@ def init_postgresql():
             autocommit=False
         )
 
+    # Test connection
+    if SqlSession is not None:
+        with SqlSession() as session:
+            session.execute(text("SELECT 1"))
+            logging.info("PostgreSQL connection test successful.")
+    else:
+        raise RuntimeError("Failed to initialize PostgreSQL session.")
+
 
 if __name__ == "__main__":
     init_postgresql()

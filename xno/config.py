@@ -10,14 +10,14 @@ class AppConfig:
     postgresql_db: str = os.environ.get('POSTGRES_DB', 'xno')
     postgresql_user: str = os.environ.get('POSTGRES_USER', 'xno')
     postgresql_password: str = os.environ.get('POSTGRES_PASSWORD', 'xno_password')
-    @property
-    def postgresql_url(self):
+
+    def postgresql_url(self, db_name=postgresql_db):
         return "postgresql://{user}:{password}@{host}:{port}/{db}".format(
             user=self.postgresql_user,
             password=quote_plus(self.postgresql_password),
             host=self.postgresql_host,
             port=self.postgresql_port,
-            db=self.postgresql_db
+            db=db_name
         )
 
     # Redis config

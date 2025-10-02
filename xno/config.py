@@ -40,22 +40,7 @@ class AppConfig:
 
     # Kafka config
     kafka_bootstrap_servers: str = os.environ.get('KAFKA_SERVERS', 'localhost:9092')
-    kafka_default_group_id: str = 'xno-data-consumer-group'
-    kafka_enable_auto_commit: bool = True
-    kafka_auto_offset_reset: str = 'earliest'
-    @property
-    def kafka_producer_config(self):
-        return {
-            'bootstrap.servers': self.kafka_bootstrap_servers,
-        }
-    @property
-    def kafka_consumer_config(self):
-        return {
-            'bootstrap.servers': self.kafka_bootstrap_servers,
-            'group.id': self.kafka_default_group_id,
-            'auto.offset.reset': self.kafka_auto_offset_reset,
-            'enable.auto.commit': self.kafka_enable_auto_commit,
-        }
+    kafka_market_data_topic: str = "market.data.transformed"
 
 
 settings = AppConfig()
@@ -65,3 +50,5 @@ logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
+
+

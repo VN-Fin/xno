@@ -41,6 +41,7 @@ load_data_query = """
 
 
 class OhlcvData:
+    "Single ticker load and process for ohclv data"
     def __init__(self, resolution: str, symbol: str):
         self.resolution = resolution
         self.symbol = symbol
@@ -82,29 +83,42 @@ class OhlcvData:
                     logging.info("Yielding chunk of size %d", len(chunk_df))
                     if not chunk_df.empty:
                         chunk_df.set_index("time", inplace=True)
-                        with self.lock:
+                        with self.lock.gen_wlock():
                             self.data = pd.concat([self.data, chunk_df])
                             # Drop duplicates by time
                             self.data = self.data[~self.data.index.duplicated(keep="last")]
                             self.data.sort_index(inplace=True)
 
-    def datas(self) -> pd.DataFrame:
+    def datas(self, resolution, from_time, to_time) -> pd.DataFrame:
+        # TODO: filter by resolution, from_time, to_time
+        # Realtime + Historical
+        # 1. datas -> min/max index
+        # 2. if from_time < min_index: load_data(from_time, min_index)
+        # 3. if to_time > max_index: load_data(max_index, to_time)
+        # 4. return data[from_time:to_time]
+        # 5. Resample if needed
         self.consume_buffer()
         with self.lock.gen_rlock():
             datas = self.data.copy()
         # Drop duplicate indices, keep the last
         datas = datas[~datas.index.duplicated(keep="last")]
+        datas = datas.sort_index()
+        datas = datas[(datas.index >= pd.to_datetime(from_time)) & (datas.index <= pd.to_datetime(to_time))]
+        # Resample if needed
+        datas = datas.resample(resolution).agg({
+            'open': 'first',
+            'high': 'max',
+            'low': 'min',
+            'close': 'last',
+            'volume': 'sum',
+        }).dropna()
         return datas
 
     def consume_buffer(self) -> bool:
         rows = []
         try:
             while True:
-                record = self.buffer.get_nowait()
-                # Convert time to datetime64[ns]
-                # record['time'] = numpy.datetime64(record['time'], 's').astype('datetime64[ns]')
-                # record['time'] = datetime.datetime.fromtimestamp(record['time'])
-                rows.append(record)
+                rows.append(self.buffer.get_nowait())
         except queue.Empty:
             pass
 
@@ -165,7 +179,7 @@ class OhlcvDataManager:
         with cls._lock.gen_rlock():
             return {
                 "total_instances": len(cls._instances),
-                "total_records": sum(len(instance.datas()) for instance in cls._instances.values())
+                # "total_records": sum(len(instance.datas()) for instance in cls._instances.values())
             }
 
     @classmethod
@@ -234,7 +248,7 @@ class OhlcvDataManager:
                 "volume": payload.get('volume'),
             }
             cls.add(resolution, payload['symbol'], new_payload)
-            # logging.info(f'Received message [{datetime.datetime.fromtimestamp(payload['updated'])}]: {payload}')
+            logging.debug(f'Received message [{datetime.datetime.fromtimestamp(payload['updated'])}]: {payload}')
 
     @classmethod
     def consume_realtime(cls):
@@ -248,12 +262,16 @@ class OhlcvDataManager:
 if __name__ == "__main__":
     import datetime, random
 
-    OhlcvDataManager.add_symbol("HPG").add_symbol("SSI").add_symbol("VND")
+    # logging.basicConfig(
+    #     level=logging.DEBUG,
+    #     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    # )
+    OhlcvDataManager.add_symbol("HPG")#.add_symbol("SSI").add_symbol("VND")
     OhlcvDataManager.consume_realtime()
 
     while True:
         time.sleep(10)
         print(OhlcvDataManager.stats())
-        datas = OhlcvDataManager.get("MIN", "HPG").datas()
+        datas = OhlcvDataManager.get("MIN", "HPG").datas(resolution="HPG", from_time="2023-10-01", to_time="2026-10-10")
         print(datas)
         print(datas.dtypes)

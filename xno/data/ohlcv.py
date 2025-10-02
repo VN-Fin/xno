@@ -3,6 +3,7 @@ import logging
 import threading
 import time
 import confluent_kafka
+import numpy
 import pandas as pd
 from confluent_kafka import Consumer
 from tqdm import tqdm
@@ -21,14 +22,13 @@ _ohlcv_db = "xno_ai_data"
 # Template DataFrame
 _ohlcv_data_template = pd.DataFrame({
     "time": pd.Series([], dtype="datetime64[ns]"),
-    "open": pd.Series([], dtype="float32"),
-    "high": pd.Series([], dtype="float32"),
-    "low": pd.Series([], dtype="float32"),
-    "close": pd.Series([], dtype="float32"),
-    "volume": pd.Series([], dtype="float32"),
+    "open": pd.Series([], dtype="float64"),
+    "high": pd.Series([], dtype="float64"),
+    "low": pd.Series([], dtype="float64"),
+    "close": pd.Series([], dtype="float64"),
+    "volume": pd.Series([], dtype="float64"),
 }).set_index("time")
 
-consume_buffer_interval = 20 # seconds
 load_chunk_size = 1000  # rows
 load_data_query = """
         SELECT time, open, high, low, close, volume
@@ -48,6 +48,7 @@ class OhlcvData:
         self.buffer = queue.Queue()
         self.lock = rwlock.RWLockFair()
         self._stop_event = threading.Event()
+        self.consume_buffer_interval = random.randint(10, 300) # seconds
 
         # Start background flusher thread
         self._threads = [
@@ -58,7 +59,7 @@ class OhlcvData:
 
     def append_data(self, data: dict):
         """Append incoming row (dict) to buffer safely."""
-        with self.lock:
+        with self.lock.gen_wlock():
             self.buffer.put(data)
 
     def load_data(self, from_time: str, to_time: str):
@@ -87,8 +88,8 @@ class OhlcvData:
                             self.data = self.data[~self.data.index.duplicated(keep="last")]
                             self.data.sort_index(inplace=True)
 
-    def get_data(self) -> pd.DataFrame:
-        """Return a copy of the current DataFrame."""
+    def datas(self) -> pd.DataFrame:
+        self.consume_buffer()
         with self.lock.gen_rlock():
             datas = self.data.copy()
         # Drop duplicate indices, keep the last
@@ -99,16 +100,38 @@ class OhlcvData:
         rows = []
         try:
             while True:
-                rows.append(self.buffer.get_nowait())
+                record = self.buffer.get_nowait()
+                # Convert time to datetime64[ns]
+                # record['time'] = numpy.datetime64(record['time'], 's').astype('datetime64[ns]')
+                # record['time'] = datetime.datetime.fromtimestamp(record['time'])
+                rows.append(record)
         except queue.Empty:
             pass
 
         if not rows:
             return False
-        df = pd.DataFrame(rows).dropna(axis=1, how="all")
+        df = pd.DataFrame(
+            rows,
+        ).dropna(
+            axis=1,
+            how="all"
+        ).astype({
+            "open": "float64",
+            "high": "float64",
+            "low": "float64",
+            "close": "float64",
+            "volume": "float64",
+        })
         if df.empty:
             return False
         df.set_index("time", inplace=True)
+        # Convert index to datetime.timestamp
+        df.index = (
+            pd.to_datetime(df.index, unit="s")
+            .tz_localize("UTC")
+            .tz_convert("Asia/Ho_Chi_Minh")
+            .tz_localize(None)
+        )
         df = df[~df.index.duplicated(keep="last")]
         with self.lock.gen_wlock():
             self.data = pd.concat([self.data, df])
@@ -117,7 +140,7 @@ class OhlcvData:
     def _commit_buffer(self):
         """Background thread that flushes buffer every 1s."""
         while not self._stop_event.is_set():
-            time.sleep(consume_buffer_interval)
+            time.sleep(self.consume_buffer_interval)
             self.consume_buffer()
 
     def stop(self):
@@ -128,13 +151,22 @@ class OhlcvData:
 
 
 class OhlcvDataManager:
+    _allowed_symbols = set()  # If empty, allow all symbols
     _instances: Dict[tuple, OhlcvData] = {}
     _lock = rwlock.RWLockFair()
 
     @classmethod
+    def add_symbol(cls, symbol: str):
+        cls._allowed_symbols.add(symbol)
+        return cls
+
+    @classmethod
     def stats(cls):
         with cls._lock.gen_rlock():
-            return {k: v.get_data().shape[0] for k, v in cls._instances.items()}
+            return {
+                "total_instances": len(cls._instances),
+                "total_records": sum(len(instance.datas()) for instance in cls._instances.values())
+            }
 
     @classmethod
     def add(cls, resolution: str, symbol: str, payload: dict):
@@ -163,12 +195,12 @@ class OhlcvDataManager:
 
         consumer = Consumer(**{
             'bootstrap.servers': settings.kafka_bootstrap_servers,
-            'enable.auto.commit': True,
+            'enable.auto.commit': False,
             'group.id': 'xno-data-consumer-group',
             'auto.offset.reset': 'latest',
         })
         consumer.subscribe([settings.kafka_market_data_topic], on_assign=latest_assign)
-
+        logging.info("Started Kafka consumer for real-time OHLCV data.")
         while True:
             m = consumer.poll(1)
             if m is None:
@@ -177,6 +209,10 @@ class OhlcvDataManager:
                 logging.error(f"Kafka error: {m.error()}")
                 continue
             payload = json.loads(m.value())
+
+            symbol = payload.get('symbol')
+            if cls._allowed_symbols and symbol not in cls._allowed_symbols:
+                continue
 
             # Check data type and source
             data_type = payload.get('data_type')
@@ -188,10 +224,17 @@ class OhlcvDataManager:
             resolution = payload.get('resolution')
             if resolution not in _accepted_resolutions:
                 continue
-
             # Add to corresponding OhlcvData instance
-            cls.add(resolution, payload['symbol'], payload)
-            logging.info(f'Received message [{datetime.datetime.fromtimestamp(payload['updated'])}]: {payload}')
+            new_payload = {
+                "time": payload.get('time'),
+                "open": payload.get('open'),
+                "high": payload.get('high'),
+                "low": payload.get('low'),
+                "close": payload.get('close'),
+                "volume": payload.get('volume'),
+            }
+            cls.add(resolution, payload['symbol'], new_payload)
+            # logging.info(f'Received message [{datetime.datetime.fromtimestamp(payload['updated'])}]: {payload}')
 
     @classmethod
     def consume_realtime(cls):
@@ -205,8 +248,12 @@ class OhlcvDataManager:
 if __name__ == "__main__":
     import datetime, random
 
+    OhlcvDataManager.add_symbol("HPG").add_symbol("SSI").add_symbol("VND")
     OhlcvDataManager.consume_realtime()
 
     while True:
         time.sleep(10)
         print(OhlcvDataManager.stats())
+        datas = OhlcvDataManager.get("MIN", "HPG").datas()
+        print(datas)
+        print(datas.dtypes)

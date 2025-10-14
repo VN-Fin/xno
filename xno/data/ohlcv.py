@@ -13,7 +13,7 @@ from xno.connectors.sql import SqlSession
 from typing import Literal, Dict
 import queue
 from readerwriterlock import rwlock
-
+import datetime, random
 
 _accepted_resolutions = {"MIN", "HOUR1", "DAY"}
 _accepted_data_type = "OH"  # Open-High-Low-Close-Volume
@@ -260,7 +260,6 @@ class OhlcvDataManager:
 
 # --- Example usage ---
 if __name__ == "__main__":
-    import datetime, random
 
     # logging.basicConfig(
     #     level=logging.DEBUG,

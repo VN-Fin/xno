@@ -57,5 +57,5 @@ class SqlSession:
 if __name__ == "__main__":
     print("PostgreSQL session initialized.")
     with SqlSession("xno_execution") as session:
-        result = session.execute(text("SELECT * FROM public.dummy LIMIT 10"))
+        result = session.execute(text("SELECT * FROM public.strategy_overview LIMIT 10"))
         print(result.fetchall())

@@ -13,13 +13,16 @@ from xno.connectors.sql import SqlSession
 from typing import Literal, Dict
 import queue
 from readerwriterlock import rwlock
-import datetime, random
+from sqlalchemy import text
 
-_accepted_resolutions = {"MIN", "HOUR1", "DAY"}
-_accepted_data_type = "OH"  # Open-High-Low-Close-Volume
-_accepted_data_source = "dnse"  # Data sources
+_accepted_resolutions = {"h", "D", "m"}
+# Data type, "OH" stands for Open-High-Low-Close-Volume
+_accepted_data_type = "OH"
+_accepted_data_source = "dnse"
+# Database name for OHLCV data
 _ohlcv_db = "xno_ai_data"
-# Template DataFrame
+
+# Template DataFrame with predefined data types for consistency
 _ohlcv_data_template = pd.DataFrame({
     "time": pd.Series([], dtype="datetime64[ns]"),
     "open": pd.Series([], dtype="float64"),
@@ -49,7 +52,7 @@ class OhlcvData:
         self.buffer = queue.Queue()
         self.lock = rwlock.RWLockFair()
         self._stop_event = threading.Event()
-        self.consume_buffer_interval = random.randint(10, 300) # seconds
+        self.consume_buffer_interval = random.randint(10, 300)  # seconds
 
         # Start background flusher thread
         self._threads = [
@@ -73,48 +76,86 @@ class OhlcvData:
         with DistributedSemaphore():
             with SqlSession(_ohlcv_db) as session:
                 chunks = pd.read_sql_query(
-                    load_data_query,
+                    text(load_data_query),
                     session.bind,
                     params=params,
                     chunksize=load_chunk_size,
-                    dtype=_ohlcv_data_template.dtype,
+                    # dtype=_ohlcv_data_template.dtypes,
                 )
+                # Iterate over each chunk and append it to the main DataFrame
                 for chunk_df in tqdm(chunks):
                     logging.info("Yielding chunk of size %d", len(chunk_df))
                     if not chunk_df.empty:
                         chunk_df.set_index("time", inplace=True)
                         with self.lock.gen_wlock():
+                            # Concatenate the new chunk with existing data
                             self.data = pd.concat([self.data, chunk_df])
-                            # Drop duplicates by time
+                            # Remove duplicates by time and keep the last one (most recent)
                             self.data = self.data[~self.data.index.duplicated(keep="last")]
+                            # Sort the data by index (time)
                             self.data.sort_index(inplace=True)
 
     def datas(self, resolution, from_time, to_time) -> pd.DataFrame:
-        # TODO: filter by resolution, from_time, to_time
-        # Realtime + Historical
-        # 1. datas -> min/max index
-        # 2. if from_time < min_index: load_data(from_time, min_index)
-        # 3. if to_time > max_index: load_data(max_index, to_time)
-        # 4. return data[from_time:to_time]
-        # 5. Resample if needed
+        """
+        Retrieves and prepares OHLCV data for the specified time range and resolution.
+        It loads historical data only for missing time periods to optimize performance.
+        """
         self.consume_buffer()
+
+        # Convert time strings to datetime objects
+        from_ts = pd.to_datetime(from_time)
+        to_ts = pd.to_datetime(to_time)
+
+        # Get the min/max index from the currently loaded data
+        with self.lock.gen_rlock():
+            if not self.data.empty:
+                min_index = self.data.index.min()
+                max_index = self.data.index.max()
+            else:
+                # If no data is loaded, set min/max index to None
+                min_index = None
+                max_index = None
+
+        # Check and load data for missing gaps
+        # Case 1: No data is loaded yet, so load the entire requested range
+        if min_index is None:
+            logging.info(f"Loading initial historical data for {self.symbol} from {from_time} to {to_time}")
+            self.load_data(from_time, to_time)
+        else:
+            # Case 2: Load historical data for a past gap
+            if from_ts < min_index:
+                logging.info(f"Loading historical data for {self.symbol} from {from_time} to {min_index}")
+                self.load_data(from_time, min_index.strftime('%Y-%m-%d %H:%M:%S'))
+
+            # Case 3: Load historical data for a future gap
+            if to_ts > max_index:
+                logging.info(f"Loading historical data for {self.symbol} from {max_index} to {to_time}")
+                self.load_data(max_index.strftime('%Y-%m-%d %H:%M:%S'), to_time)
+
+        # After loading, get a read lock and filter the data
         with self.lock.gen_rlock():
             datas = self.data.copy()
-        # Drop duplicate indices, keep the last
-        datas = datas[~datas.index.duplicated(keep="last")]
-        datas = datas.sort_index()
-        datas = datas[(datas.index >= pd.to_datetime(from_time)) & (datas.index <= pd.to_datetime(to_time))]
-        # Resample if needed
-        datas = datas.resample(resolution).agg({
-            'open': 'first',
-            'high': 'max',
-            'low': 'min',
-            'close': 'last',
-            'volume': 'sum',
-        }).dropna()
+
+        # Filter by the requested time range
+        datas = datas[(datas.index >= from_ts) & (datas.index <= to_ts)]
+
+        # Resample data if the requested resolution is different from the instance's resolution
+        if resolution != self.resolution:
+            logging.info(f"Resampling data for {self.symbol} from {self.resolution} to {resolution}")
+            datas = datas.resample(resolution).agg({
+                'open': 'first',
+                'high': 'max',
+                'low': 'min',
+                'close': 'last',
+                'volume': 'sum',
+            }).dropna()
+
         return datas
 
     def consume_buffer(self) -> bool:
+        """
+        Flushes real-time data from the buffer queue to the main DataFrame.
+        """
         rows = []
         try:
             while True:
@@ -165,6 +206,9 @@ class OhlcvData:
 
 
 class OhlcvDataManager:
+    """
+    Manages and provides OhlcvData instances for different symbols and resolutions.
+    """
     _allowed_symbols = set()  # If empty, allow all symbols
     _instances: Dict[tuple, OhlcvData] = {}
     _lock = rwlock.RWLockFair()
@@ -202,6 +246,10 @@ class OhlcvDataManager:
 
     @classmethod
     def _consume_realtime(cls):
+        """
+        Background worker to consume real-time data from Kafka.
+        """
+
         def latest_assign(consumer, partitions):
             for p in partitions:
                 p.offset = confluent_kafka.OFFSET_END
@@ -260,17 +308,18 @@ class OhlcvDataManager:
 
 # --- Example usage ---
 if __name__ == "__main__":
+    import datetime, random
 
     # logging.basicConfig(
     #     level=logging.DEBUG,
     #     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
     # )
-    OhlcvDataManager.add_symbol("HPG")#.add_symbol("SSI").add_symbol("VND")
+    OhlcvDataManager.add_symbol("HPG")  # .add_symbol("SSI").add_symbol("VND")
     OhlcvDataManager.consume_realtime()
 
     while True:
         time.sleep(10)
         print(OhlcvDataManager.stats())
-        datas = OhlcvDataManager.get("MIN", "HPG").datas(resolution="HPG", from_time="2023-10-01", to_time="2026-10-10")
+        datas = OhlcvDataManager.get("D", "HPG").datas(resolution="D", from_time="2025-09-15", to_time="2026-10-10")
         print(datas)
         print(datas.dtypes)

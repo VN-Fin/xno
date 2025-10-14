@@ -14,6 +14,7 @@ from typing import Literal, Dict
 import queue
 from readerwriterlock import rwlock
 from sqlalchemy import text
+import datetime, random
 
 _accepted_resolutions = {"h", "D", "m"}
 # Data type, "OH" stands for Open-High-Low-Close-Volume
@@ -308,18 +309,17 @@ class OhlcvDataManager:
 
 # --- Example usage ---
 if __name__ == "__main__":
-    import datetime, random
 
     # logging.basicConfig(
     #     level=logging.DEBUG,
     #     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
     # )
-    OhlcvDataManager.add_symbol("HPG")  # .add_symbol("SSI").add_symbol("VND")
+    # OhlcvDataManager.add_symbol("HPG")  # .add_symbol("SSI").add_symbol("VND")
     OhlcvDataManager.consume_realtime()
 
     while True:
         time.sleep(10)
         print(OhlcvDataManager.stats())
-        datas = OhlcvDataManager.get("D", "HPG").datas(resolution="D", from_time="2025-09-15", to_time="2026-10-10")
+        datas = OhlcvDataManager.get("D", "HPG").datas(resolution="D", from_time="2020-09-15", to_time="2026-10-10")
         print(datas)
         print(datas.dtypes)

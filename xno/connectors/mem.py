@@ -39,7 +39,7 @@ class DistributedSemaphore:
         """
         Try to acquire one of the semaphore slots.
         """
-        logging.info(f'Acquiring semaphore {self.key}')
+        logging.debug(f'Acquiring semaphore {self.key}')
         start_time = time.time()
         while time.time() - start_time < self.timeout:
             now = int(time.time() * 1000)

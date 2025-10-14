@@ -85,7 +85,7 @@ class OhlcvData:
                 )
                 # Iterate over each chunk and append it to the main DataFrame
                 for chunk_df in tqdm(chunks):
-                    logging.info("Yielding chunk of size %d", len(chunk_df))
+                    logging.debug("Yielding chunk of size %d", len(chunk_df))
                     if not chunk_df.empty:
                         chunk_df.set_index("time", inplace=True)
                         with self.lock.gen_wlock():
@@ -120,17 +120,17 @@ class OhlcvData:
         # Check and load data for missing gaps
         # Case 1: No data is loaded yet, so load the entire requested range
         if min_index is None:
-            logging.info(f"Loading initial historical data for {self.symbol} from {from_time} to {to_time}")
+            logging.debug(f"Loading initial historical data for {self.symbol} from {from_time} to {to_time}")
             self.load_data(from_time, to_time)
         else:
             # Case 2: Load historical data for a past gap
             if from_ts < min_index:
-                logging.info(f"Loading historical data for {self.symbol} from {from_time} to {min_index}")
+                logging.debug(f"Loading historical data for {self.symbol} from {from_time} to {min_index}")
                 self.load_data(from_time, min_index.strftime('%Y-%m-%d %H:%M:%S'))
 
             # Case 3: Load historical data for a future gap
             if to_ts > max_index:
-                logging.info(f"Loading historical data for {self.symbol} from {max_index} to {to_time}")
+                logging.debug(f"Loading historical data for {self.symbol} from {max_index} to {to_time}")
                 self.load_data(max_index.strftime('%Y-%m-%d %H:%M:%S'), to_time)
 
         # After loading, get a read lock and filter the data
@@ -142,7 +142,7 @@ class OhlcvData:
 
         # Resample data if the requested resolution is different from the instance's resolution
         if resolution != self.resolution:
-            logging.info(f"Resampling data for {self.symbol} from {self.resolution} to {resolution}")
+            logging.debug(f"Resampling data for {self.symbol} from {self.resolution} to {resolution}")
             datas = datas.resample(resolution).agg({
                 'open': 'first',
                 'high': 'max',
@@ -232,7 +232,7 @@ class OhlcvDataManager:
         key = (resolution, symbol)
         with cls._lock.gen_wlock():
             if key not in cls._instances:
-                logging.info("Creating new OhlcvData instance for %s at %s", symbol, resolution)
+                logging.debug("Creating new OhlcvData instance for %s at %s", symbol, resolution)
                 cls._instances[key] = OhlcvData(resolution, symbol)
             cls._instances[key].append_data(payload)
 
@@ -241,7 +241,7 @@ class OhlcvDataManager:
         key = (resolution, symbol)
         with cls._lock.gen_rlock():
             if key not in cls._instances:
-                logging.info(f"Creating new OhlcvData instance for {symbol} at {resolution}")
+                logging.debug(f"Creating new OhlcvData instance for {symbol} at {resolution}")
                 cls._instances[key] = OhlcvData(resolution, symbol)
             return cls._instances[key]
 

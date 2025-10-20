@@ -40,7 +40,6 @@ class TradingState(BaseModel):
     sell_size: NumericType = 0.0        # Total size to be sold
     pending_sell_weight: NumericType = 0.0    # Weight of the pending sell order
     re_run: BooleanType                # Flag to indicate if the strategy should be re-run
-    to_candle: DateTimeType # Previous candle data
     engine: EngineType # Trading engine being used (see AllowedEngine)
 
     @field_serializer("candle", "run_from", "run_to", "prev_candle")

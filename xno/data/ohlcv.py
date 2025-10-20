@@ -237,7 +237,7 @@ class OhlcvDataManager:
             cls._instances[key].append_data(payload)
 
     @classmethod
-    def get(cls, resolution: str, symbol: str, from_time=None, to_time=None) -> pd.DataFrame:
+    def get(cls, resolution: str, symbol: str, from_time=None, to_time=None, factor=1) -> pd.DataFrame:
         resolution = resolution.lower()
         if "d" in resolution:
             query_res = "D"
@@ -274,7 +274,13 @@ class OhlcvDataManager:
             'volume': 'sum',
         }).dropna()
         # Rename
-        return df.rename(
+        # xfactor adjustment for open, high, low, close
+        if factor != 1:
+            df['open'] = df['open'] * factor
+            df['high'] = df['high'] * factor
+            df['low'] = df['low'] * factor
+            df['close'] = df['close'] * factor
+        df = df.rename(
             columns={
                 'open': 'Open',
                 'high': 'High',
@@ -283,6 +289,8 @@ class OhlcvDataManager:
                 'volume': 'Volume'
             },
         )
+        return df
+
 
     @classmethod
     def _consume_realtime(cls):
@@ -360,6 +368,6 @@ if __name__ == "__main__":
     while True:
         time.sleep(10)
         print(OhlcvDataManager.stats())
-        datas = OhlcvDataManager.get("min", "HPG")
+        datas = OhlcvDataManager.get("min", "HPG", factor=1000)
         print(datas)
         print(datas.dtypes)

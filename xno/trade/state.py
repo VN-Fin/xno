@@ -42,7 +42,7 @@ class TradingState(BaseModel):
     re_run: BooleanType                # Flag to indicate if the strategy should be re-run
     engine: EngineType # Trading engine being used (see AllowedEngine)
 
-    @field_serializer("candle", "run_from", "run_to", "prev_candle")
+    @field_serializer("candle", "run_from", "run_to")
     def serialize_datetime(self, dt):
         # Convert numpy.datetime64 or pandas.Timestamp to ISO string
         if isinstance(dt, (np.datetime64, pd.Timestamp)):
@@ -69,7 +69,6 @@ if __name__ == "__main__":
         trade_size=50,
         bt_mode=AllowedTradeMode.BackTrade,
         re_run=False,
-        to_candle=pd.Timestamp(datetime.datetime.now() - datetime.timedelta(minutes=15)),
         engine=AllowedEngine.TABot,
     )
     datas = state.to_json_str()

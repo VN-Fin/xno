@@ -3,7 +3,6 @@ from xno.trade.tp import (
     AllowedAction,
     AllowedTradeMode,
     DateTimeType,
-    SignalType,
     SymbolType,
     BooleanType,
     NumericType,
@@ -11,6 +10,5 @@ from xno.trade.tp import (
     ActionType,
     AllowedEngine,
     TradeModeType,
-    AllowedSignal,
-    AllowedSymbolClass
+    AllowedSymbolType
 )

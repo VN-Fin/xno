@@ -10,7 +10,9 @@ from xno.trade.tp import (
     DateTimeType,
     EngineType,
     NumericType,
-    BooleanType
+    BooleanType,
+    SymbolType,
+    AllowedSymbolType
 )
 
 
@@ -19,7 +21,9 @@ class TradingState(BaseModel):
         "arbitrary_types_allowed": True,
         "validate_assignment": True,
     }
-
+    strategy_id : str # Strategy identifier, use UUID format
+    symbol: str    # Trading symbol, e.g., "AAPL", "BTC-USD"
+    symbol_type: SymbolType # Type of the symbol (see AllowedSymbolType)
     candle: DateTimeType # Current candle data
     run_from: DateTimeType # Optional: Define the time range for the strategy run
     run_to: DateTimeType # Optional: Define the time range for the strategy run
@@ -53,6 +57,9 @@ class TradingState(BaseModel):
 if __name__ == "__main__":
     from xno.trade.tp import AllowedAction, AllowedTradeMode, AllowedEngine
     state = TradingState(
+        strategy_id="123e4567-e89b-12d3-a456-426614174000",
+        symbol="HSG",
+        symbol_type=AllowedSymbolType.Stock,
         candle=datetime.datetime.now(),
         run_from=datetime.datetime.now(),
         run_to=np.datetime64(datetime.datetime.now() - datetime.timedelta(days=5)),

@@ -11,12 +11,7 @@ class AllowedTradeMode(int, Enum):
     LiveTrade = 2
 
 
-class AllowedSignal(str, Enum):
-    Buy = "B"
-    Sell = "S"
-    Hold = "H"
-
-class AllowedSymbolClass(str, Enum):
+class AllowedSymbolType(str, Enum):
     Stock = "S"
     Derivative = "D"
     Crypto = "C"
@@ -36,8 +31,8 @@ class AllowedAction(str, Enum):
 ActionType = AllowedAction | str
 TradeModeType = AllowedTradeMode | int
 EngineType = AllowedEngine | str
-SymbolType = AllowedSymbolClass | str
-SignalType = AllowedSignal | str
+SymbolType = AllowedSymbolType | str
+# Basic Types
 DateTimeType = str | datetime.datetime | pd.Timestamp | np.datetime64
 NumericType = np.number | float | int | np.float64 | np.int64
 BooleanType = bool | np.bool

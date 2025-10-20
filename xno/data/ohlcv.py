@@ -266,13 +266,23 @@ class OhlcvDataManager:
         from_time = pd.to_datetime(from_time)
         df = instance.datas(from_time, to_time)
         # Resample to requested resolution if needed
-        return df.resample(resolution).agg({
+        df = df.resample(resolution).agg({
             'open': 'first',
             'high': 'max',
             'low': 'min',
             'close': 'last',
             'volume': 'sum',
         }).dropna()
+        # Rename
+        return df.rename(
+            columns={
+                'open': 'Open',
+                'high': 'High',
+                'low': 'Low',
+                'close': 'Close',
+                'volume': 'Volume'
+            },
+        )
 
     @classmethod
     def _consume_realtime(cls):

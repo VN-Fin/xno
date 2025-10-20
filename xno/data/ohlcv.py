@@ -62,6 +62,23 @@ class OhlcvData:
         for t in self._threads:
             t.start()
 
+    def get_max_data_time(self):
+        query = """
+        SELECT MAX(time) as max_time
+        FROM trading.stock_ohlcv_history
+        WHERE symbol = :symbol
+            AND resolution = :resolution
+        """
+        params = {
+            "symbol": self.symbol,
+            "resolution": self.resolution,
+        }
+        with DistributedSemaphore():
+            with SqlSession(_ohlcv_db) as session:
+                result = session.execute(text(query), params)
+                max_time = result.scalar()
+                return max_time
+
     def append_data(self, data: dict):
         """Append incoming row (dict) to buffer safely."""
         with self.lock.gen_wlock():
@@ -96,17 +113,12 @@ class OhlcvData:
                             # Sort the data by index (time)
                             self.data.sort_index(inplace=True)
 
-    def datas(self, resolution, from_time, to_time) -> pd.DataFrame:
+    def datas(self, from_time, to_time) -> pd.DataFrame:
         """
         Retrieves and prepares OHLCV data for the specified time range and resolution.
         It loads historical data only for missing time periods to optimize performance.
         """
         self.consume_buffer()
-
-        # Convert time strings to datetime objects
-        from_ts = pd.to_datetime(from_time)
-        to_ts = pd.to_datetime(to_time)
-
         # Get the min/max index from the currently loaded data
         with self.lock.gen_rlock():
             if not self.data.empty:
@@ -124,12 +136,12 @@ class OhlcvData:
             self.load_data(from_time, to_time)
         else:
             # Case 2: Load historical data for a past gap
-            if from_ts < min_index:
+            if from_time < min_index:
                 logging.debug(f"Loading historical data for {self.symbol} from {from_time} to {min_index}")
                 self.load_data(from_time, min_index.strftime('%Y-%m-%d %H:%M:%S'))
 
             # Case 3: Load historical data for a future gap
-            if to_ts > max_index:
+            if to_time > max_index:
                 logging.debug(f"Loading historical data for {self.symbol} from {max_index} to {to_time}")
                 self.load_data(max_index.strftime('%Y-%m-%d %H:%M:%S'), to_time)
 
@@ -138,19 +150,7 @@ class OhlcvData:
             datas = self.data.copy()
 
         # Filter by the requested time range
-        datas = datas[(datas.index >= from_ts) & (datas.index <= to_ts)]
-
-        # Resample data if the requested resolution is different from the instance's resolution
-        if resolution != self.resolution:
-            logging.debug(f"Resampling data for {self.symbol} from {self.resolution} to {resolution}")
-            datas = datas.resample(resolution).agg({
-                'open': 'first',
-                'high': 'max',
-                'low': 'min',
-                'close': 'last',
-                'volume': 'sum',
-            }).dropna()
-
+        datas = datas[(datas.index >= from_time) & (datas.index <= to_time)]
         return datas
 
     def consume_buffer(self) -> bool:
@@ -237,13 +237,42 @@ class OhlcvDataManager:
             cls._instances[key].append_data(payload)
 
     @classmethod
-    def get(cls, resolution: str, symbol: str) -> OhlcvData:
-        key = (resolution, symbol)
+    def get(cls, resolution: str, symbol: str, from_time=None, to_time=None) -> pd.DataFrame:
+        resolution = resolution.lower()
+        if "d" in resolution:
+            query_res = "D"
+            days = 30
+        elif "h" in resolution:
+            query_res = "h"
+            days = 7
+        elif "min" in resolution:
+            query_res = "m"
+            days = 1
+        else:
+            raise ValueError(f"Unsupported resolution: {resolution}")
+
+        key = (query_res, symbol)
         with cls._lock.gen_rlock():
             if key not in cls._instances:
                 logging.debug(f"Creating new OhlcvData instance for {symbol} at {resolution}")
-                cls._instances[key] = OhlcvData(resolution, symbol)
-            return cls._instances[key]
+                cls._instances[key] = OhlcvData(query_res, symbol)
+            instance = cls._instances[key]
+        if to_time is None:
+            to_time = instance.get_max_data_time()
+        to_time = pd.to_datetime(to_time)
+
+        if from_time is None:
+            from_time = to_time - datetime.timedelta(days=days)
+        from_time = pd.to_datetime(from_time)
+        df = instance.datas(from_time, to_time)
+        # Resample to requested resolution if needed
+        return df.resample(resolution).agg({
+            'open': 'first',
+            'high': 'max',
+            'low': 'min',
+            'close': 'last',
+            'volume': 'sum',
+        }).dropna()
 
     @classmethod
     def _consume_realtime(cls):
@@ -315,11 +344,12 @@ if __name__ == "__main__":
     #     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
     # )
     # OhlcvDataManager.add_symbol("HPG")  # .add_symbol("SSI").add_symbol("VND")
-    OhlcvDataManager.consume_realtime()
+    # uncommented to enable real-time consumption
+    # OhlcvDataManager.consume_realtime()
 
     while True:
         time.sleep(10)
         print(OhlcvDataManager.stats())
-        datas = OhlcvDataManager.get("D", "HPG").datas(resolution="D", from_time="2020-09-15", to_time="2026-10-10")
+        datas = OhlcvDataManager.get("10min", "HPG")
         print(datas)
         print(datas.dtypes)

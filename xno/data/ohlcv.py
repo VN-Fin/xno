@@ -355,11 +355,11 @@ if __name__ == "__main__":
     # )
     # OhlcvDataManager.add_symbol("HPG")  # .add_symbol("SSI").add_symbol("VND")
     # uncommented to enable real-time consumption
-    # OhlcvDataManager.consume_realtime()
+    OhlcvDataManager.consume_realtime()
 
     while True:
         time.sleep(10)
         print(OhlcvDataManager.stats())
-        datas = OhlcvDataManager.get("10min", "HPG")
+        datas = OhlcvDataManager.get("min", "HPG")
         print(datas)
         print(datas.dtypes)

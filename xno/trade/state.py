@@ -41,6 +41,7 @@ class TradingState(BaseModel):
     pending_sell_weight: NumericType = 0.0    # Weight of the pending sell order
     re_run: BooleanType                # Flag to indicate if the strategy should be re-run
     prev_candle: DateTimeType # Previous candle data
+    last_run_candle: DateTimeType | None
     engine: EngineType # Trading engine being used (see AllowedEngine)
 
     @field_serializer("candle", "run_from", "run_to", "prev_candle")
@@ -71,7 +72,8 @@ if __name__ == "__main__":
         bt_mode=AllowedTradeMode.BackTrade,
         re_run=False,
         prev_candle=pd.Timestamp(datetime.datetime.now() - datetime.timedelta(minutes=15)),
-        engine=AllowedEngine.TABot
+        engine=AllowedEngine.TABot,
+        last_run_candle=None
     )
     datas = state.to_json_str()
     print(datas)

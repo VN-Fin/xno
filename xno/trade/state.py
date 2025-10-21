@@ -49,7 +49,7 @@ class StrategyState(BaseModel):
             # load from string
             dt = pd.Timestamp(dt).to_pydatetime()
         # Convert numpy.datetime64 or pandas.Timestamp to ISO string
-        if isinstance(dt, (np.datetime64, pd.Timestamp)):
+        elif isinstance(dt, (np.datetime64, pd.Timestamp)):
             dt = pd.Timestamp(dt).to_pydatetime()
         return dt.isoformat()
 

@@ -42,7 +42,7 @@ class StrategySignal(BaseModel):
     def to_json_str(self) -> str:
         if self.bt_mode != AllowedTradeMode.LiveTrade:
             logging.warning("StrategySignal can only be serialized to JSON in LiveTrade mode.")
-            return ""
+            return self.strategy_id
         return self.model_dump_json()
 
     def __eq__(self, other):

@@ -45,6 +45,9 @@ class StrategyState(BaseModel):
 
     @field_serializer("candle", "run_from", "run_to")
     def serialize_datetime(self, dt):
+        if isinstance(dt, (str, bytes)):
+            # load from string
+            dt = pd.Timestamp(dt).to_pydatetime()
         # Convert numpy.datetime64 or pandas.Timestamp to ISO string
         if isinstance(dt, (np.datetime64, pd.Timestamp)):
             dt = pd.Timestamp(dt).to_pydatetime()

@@ -8,7 +8,11 @@ from xno.trade.tp import (
     NumericType,
     ActionType,
     EngineType,
-    TradeModeType
+    AllowedAction,
+    AllowedTradeMode,
+    AllowedEngine,
+    TradeModeType,
+    AllowedSymbolType
 )
 import numpy as np
 import pandas as pd
@@ -60,7 +64,6 @@ class StrategySignal(BaseModel):
 
 
 if __name__ == "__main__":
-    from xno.trade.tp import AllowedAction, AllowedTradeMode, AllowedEngine, TradeModeType, AllowedSymbolType
     sig_str = """{
       "bt_mode": 2,
       "candle": "2024-01-01 10:00:00",

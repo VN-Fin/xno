@@ -12,7 +12,10 @@ from xno.trade.tp import (
     NumericType,
     BooleanType,
     SymbolType,
-    AllowedSymbolType
+    AllowedSymbolType,
+    AllowedAction,
+    AllowedTradeMode,
+    AllowedEngine
 )
 
 
@@ -60,7 +63,6 @@ class StrategyState(BaseModel):
 TradingState = StrategyState
 
 if __name__ == "__main__":
-    from xno.trade.tp import AllowedAction, AllowedTradeMode, AllowedEngine
     state = TradingState(
         strategy_id="123e4567-e89b-12d3-a456-426614174000",
         symbol="HSG",

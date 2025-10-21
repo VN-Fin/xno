@@ -12,16 +12,20 @@ from xno.trade.tp import (
     NumericType,
     BooleanType,
     SymbolType,
-    AllowedSymbolType
+    AllowedSymbolType,
+    AllowedAction,
+    AllowedTradeMode,
+    AllowedEngine
 )
 
 
-class TradingState(BaseModel):
+class StrategyState(BaseModel):
     model_config = {
         "arbitrary_types_allowed": True,
         "validate_assignment": True,
     }
     strategy_id : str # Strategy identifier, use UUID format
+    book_size: NumericType # Total cash available for trading
     symbol: str    # Trading symbol, e.g., "AAPL", "BTC-USD"
     symbol_type: SymbolType # Type of the symbol (see AllowedSymbolType)
     candle: DateTimeType # Current candle data
@@ -44,8 +48,11 @@ class TradingState(BaseModel):
 
     @field_serializer("candle", "run_from", "run_to")
     def serialize_datetime(self, dt):
+        if isinstance(dt, (str, bytes)):
+            # load from string
+            dt = pd.Timestamp(dt).to_pydatetime()
         # Convert numpy.datetime64 or pandas.Timestamp to ISO string
-        if isinstance(dt, (np.datetime64, pd.Timestamp)):
+        elif isinstance(dt, (np.datetime64, pd.Timestamp)):
             dt = pd.Timestamp(dt).to_pydatetime()
         return dt.isoformat()
 
@@ -53,8 +60,9 @@ class TradingState(BaseModel):
         return self.model_dump_json()
 
 
+TradingState = StrategyState
+
 if __name__ == "__main__":
-    from xno.trade.tp import AllowedAction, AllowedTradeMode, AllowedEngine
     state = TradingState(
         strategy_id="123e4567-e89b-12d3-a456-426614174000",
         symbol="HSG",
@@ -70,6 +78,7 @@ if __name__ == "__main__":
         bt_mode=AllowedTradeMode.BackTrade,
         re_run=False,
         engine=AllowedEngine.TABot,
+        book_size=500e6
     )
     datas = state.to_json_str()
     print(datas)

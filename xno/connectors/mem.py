@@ -1,98 +1,26 @@
+from xno.connectors.mutex import DistributedMutex
+from xno.connectors.rd import RedisClient
+from xno.connectors.semaphore import DistributedSemaphore
 import logging
 
-import redis
-import time
-import uuid
-from xno import settings
+
+logging.warning("Deprecated module xno.connectors.mem imported. Please use `xno.connectors.mutex`, `xno.connectors.semaphore` or `xno.connectors.lock` instead.")
 
 
-RedisClient = redis.StrictRedis(
-    **settings.redis_config
-)
-# Test connection
-try:
-    RedisClient.ping()
-    logging.info("Connected to Redis successfully.")
-except redis.ConnectionError as e:
-    logging.error(f"Failed to connect to Redis: {e}")
-    raise RuntimeError("Failed to connect to Redis.")
-
-
-class DistributedSemaphore:
-    def __init__(
-            self,
-            ttl: int = 30,
-            retry_interval: float = 0.1,
-            timeout: int = 60,
-    ):
-        """
-        Redis-based distributed semaphore (multiple concurrent holders).
-        """
-        self.key = settings.semaphore_max_permits
-        self.max_leases = settings.semaphore_max_permits
-        self.ttl = ttl
-        self.retry_interval = retry_interval
-        self.timeout = timeout
-        self.value = str(uuid.uuid4())
-
-    def acquire(self) -> bool:
-        """
-        Try to acquire one of the semaphore slots.
-        """
-        logging.debug(f'Acquiring semaphore {self.key}')
-        start_time = time.time()
-        while time.time() - start_time < self.timeout:
-            now = int(time.time() * 1000)
-            pipeline = RedisClient.pipeline()
-
-            # remove expired holders
-            pipeline.zremrangebyscore(self.key, 0, now - self.ttl * 1000)
-            # add self
-            pipeline.zadd(self.key, {self.value: now})
-            # get rank
-            pipeline.zrank(self.key, self.value)
-            # set expiry on the whole key (in case no one cleans)
-            pipeline.expire(self.key, self.ttl)
-            _, _, rank, _ = pipeline.execute()
-
-            if rank is not None and rank < self.max_leases:
-                return True
-
-            # if failed, cleanup our token
-            RedisClient.zrem(self.key, self.value)
-            logging.warning(f"Semaphore full, retrying acquire for key {self.key} after {self.retry_interval}s")
-            time.sleep(self.retry_interval)
-
-        return False
-
-    def release(self):
-        """Release semaphore slot."""
-        logging.debug(f"Releasing semaphore {self.key}")
-        RedisClient.zrem(self.key, self.value)
-
-    def __enter__(self):
-        if not self.acquire():
-            logging.error(f"Semaphore {self.key} not acquired.")
-            raise TimeoutError(f"Could not acquire semaphore for key {self.key}")
-        return self
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        self.release()
-
-
-# USAGE
 if __name__ == "__main__":
+    import time
     def query_postgres():
         print("Running query...")
         time.sleep(2)
 
-    # with DistributedSemaphore():
-    #     query_postgres()
-    #     print("Done, released slot")
+    with DistributedSemaphore():
+        query_postgres()
+        print("Done, released slot")
 
-    with RedisClient as session:
-        logging.info("Setting a test value in Redis")
-        session.set('test', 'value')
-
-    with RedisClient as session:
-        logging.info(session.get('test'))
+    if DistributedMutex("my_mutex").lock():
+        try:
+            print("Mutex acquired, doing work...")
+            time.sleep(2)
+        finally:
+            DistributedMutex("my_mutex").unlock()
+            print("Mutex released.")

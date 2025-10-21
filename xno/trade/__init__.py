@@ -1,4 +1,5 @@
-from xno.trade.state import TradingState
+from xno.trade.state import TradingState, StrategyState
+from xno.trade.signal import StrategySignal
 from xno.trade.tp import (
     AllowedAction,
     AllowedTradeMode,

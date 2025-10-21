@@ -16,7 +16,7 @@ from xno.trade.tp import (
 )
 
 
-class TradingState(BaseModel):
+class StrategyState(BaseModel):
     model_config = {
         "arbitrary_types_allowed": True,
         "validate_assignment": True,
@@ -54,6 +54,8 @@ class TradingState(BaseModel):
         return self.model_dump_json()
 
 
+TradingState = StrategyState
+
 if __name__ == "__main__":
     from xno.trade.tp import AllowedAction, AllowedTradeMode, AllowedEngine
     state = TradingState(
@@ -71,6 +73,7 @@ if __name__ == "__main__":
         bt_mode=AllowedTradeMode.BackTrade,
         re_run=False,
         engine=AllowedEngine.TABot,
+        book_size=500e6
     )
     datas = state.to_json_str()
     print(datas)

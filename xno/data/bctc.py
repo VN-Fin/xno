@@ -36,7 +36,7 @@ _bctc_data_template = pd.DataFrame({
     "close": pd.Series([], dtype="float64"),
     "volume": pd.Series([], dtype="float64"),
 
-    "shortAsset": pd.Series([], dtype="float64"),
+    "ShortAsset": pd.Series([], dtype="float64"),
     "cash": pd.Series([], dtype="float64"),
     "shortInvest": pd.Series([], dtype="float64"),
     "shortReceivable": pd.Series([], dtype="float64"),

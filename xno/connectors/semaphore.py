@@ -1,7 +1,6 @@
 import logging
 import time
 import uuid
-from xno import settings
 from xno.connectors.rd import RedisClient
 
 
@@ -11,12 +10,19 @@ class DistributedSemaphore:
             ttl: int = 30,
             retry_interval: float = 0.1,
             timeout: int = 60,
+            lock_key: str = "xno_data_semaphore",
+            max_permits: int = 5,
     ):
         """
         Redis-based distributed semaphore (multiple concurrent holders).
+        :param ttl: Time-to-live for each semaphore slot in seconds.
+        :param retry_interval: Time in seconds to wait before retrying to acquire the semaphore.
+        :param timeout: Maximum time in seconds to wait to acquire the semaphore.
+        :param lock_key: Redis key to use for the semaphore.
+        :param max_permits: Maximum number of concurrent holders of the semaphore.
         """
-        self.key = settings.semaphore_max_permits
-        self.max_leases = settings.semaphore_max_permits
+        self.key = lock_key
+        self.max_leases = max_permits
         self.ttl = ttl
         self.retry_interval = retry_interval
         self.timeout = timeout

@@ -22,6 +22,7 @@ class TradingState(BaseModel):
         "validate_assignment": True,
     }
     strategy_id : str # Strategy identifier, use UUID format
+    book_size: NumericType # Total cash available for trading
     symbol: str    # Trading symbol, e.g., "AAPL", "BTC-USD"
     symbol_type: SymbolType # Type of the symbol (see AllowedSymbolType)
     candle: DateTimeType # Current candle data

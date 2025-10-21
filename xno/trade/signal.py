@@ -47,15 +47,12 @@ class StrategySignal(BaseModel):
 
     def __eq__(self, other):
         if not isinstance(other, StrategySignal):
-            return NotImplemented
-
-        if not isinstance(other, StrategySignal):
-            return NotImplemented
+            return False
 
         a, b = self.model_dump(), other.model_dump()
         for key in a.keys():
             if isinstance(a[key], (int, float)) and isinstance(b[key], (int, float)):
-                if not np.isclose(a[key], b[key], rtol=1e-8, atol=1e-12):
+                if not np.isclose(a[key], b[key], rtol=1e-8, atol=1e-12):  # compare float
                     return False
             elif a[key] != b[key]:
                 return False

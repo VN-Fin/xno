@@ -15,12 +15,11 @@ class DataFetcher:
                 "type": self.type,
             }
             response = requests.get(self.url, params=params)
-            print(f"[CALL] {response.url}")  # 👈 In ra URL thật sự được gọi
+            print(f"[CALL] {response.url}")
             if response.status_code == 200:
                 data = response.json()
                 if data:
                     df = pd.DataFrame(data)
-                    # Nếu có nam, quy, tạo quarter_end_date làm index
                     if 'nam' in df.columns and 'quy' in df.columns:
                         quarter_end_month = {1: 3, 2: 6, 3: 9, 4: 12}
                         df['quarter_end_date'] = df.apply(
@@ -45,7 +44,7 @@ class DataFetcher:
                     "apikey": self.apikey
                 }
                 response = requests.get(self.url, params=params)
-                print(f"[CALL] {response.url}")  # 👈 In ra URL thật sự được gọi
+                print(f"[CALL] {response.url}")
                 if response.status_code == 200:
                     data = response.json()
                     if data:

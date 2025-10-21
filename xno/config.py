@@ -26,8 +26,7 @@ class AppConfig:
     redis_db: int = os.environ.get('REDIS_DB', 0)
     redis_user: str = os.environ.get('REDIS_USER', 'default')
     redis_password: str = os.environ.get('REDIS_PASSWORD', None)
-    semaphore_key: str = "xno_data_semaphore"
-    semaphore_max_permits: int = 5  # max 5 operations
+
     @property
     def redis_config(self):
         return {
@@ -41,6 +40,9 @@ class AppConfig:
     # Kafka config
     kafka_bootstrap_servers: str = os.environ.get('KAFKA_SERVERS', 'localhost:9092')
     kafka_market_data_topic: str = "market.data.transformed"
+    kafka_ping_topic: str = "ping"
+    # Config for execution database
+    execution_db_name: str = "xno_execution"
 
 
 settings = AppConfig()

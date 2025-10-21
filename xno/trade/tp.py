@@ -1,5 +1,6 @@
 from enum import Enum
 import datetime
+from typing import List
 
 import numpy as np
 import pandas as pd
@@ -21,6 +22,10 @@ class AllowedEngine(str, Enum):
     TABot = "TA-Bot"
     AIBot = "AI-Bot"
     XQuant = "X-Quant"
+
+    @classmethod
+    def all_engines(cls) -> List[str]:
+        return [e.value for e in AllowedEngine]
 
 class AllowedAction(str, Enum):
     Buy = "B"

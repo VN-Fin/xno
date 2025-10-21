@@ -31,6 +31,9 @@ class StrategySignal(BaseModel):
 
     @field_serializer("candle")
     def serialize_datetime(self, dt):
+        if isinstance(dt, (str, bytes)):
+            # load from string
+            dt = pd.Timestamp(dt).to_pydatetime()
         # Convert numpy.datetime64 or pandas.Timestamp to ISO string
         if isinstance(dt, (np.datetime64, pd.Timestamp)):
             dt = pd.Timestamp(dt).to_pydatetime()
@@ -42,9 +45,37 @@ class StrategySignal(BaseModel):
             return ""
         return self.model_dump_json()
 
+    def __eq__(self, other):
+        if not isinstance(other, StrategySignal):
+            return NotImplemented
+
+        if not isinstance(other, StrategySignal):
+            return NotImplemented
+
+        a, b = self.model_dump(), other.model_dump()
+        for key in a.keys():
+            if isinstance(a[key], (int, float)) and isinstance(b[key], (int, float)):
+                if not np.isclose(a[key], b[key], rtol=1e-8, atol=1e-12):
+                    return False
+            elif a[key] != b[key]:
+                return False
+        return True
+
 
 if __name__ == "__main__":
     from xno.trade.tp import AllowedAction, AllowedTradeMode, AllowedEngine, TradeModeType, AllowedSymbolType
+    sig_str = """{
+      "bt_mode": 2,
+      "candle": "2024-01-01 10:00:00",
+      "current_action": "B",
+      "current_price": 150.0,
+      "current_weight": 0.5,
+      "engine": "TA-Bot",
+      "strategy_id": "123e4567-e89b-12d3-a456-426614174000",
+      "symbol": "AAPL",
+      "symbol_type": "S"
+    }"""
+    signal_str = StrategySignal.model_validate_json(sig_str)
 
     signal = StrategySignal(
         strategy_id="123e4567-e89b-12d3-a456-426614174000",
@@ -57,4 +88,12 @@ if __name__ == "__main__":
         bt_mode=AllowedTradeMode.LiveTrade,
         engine=AllowedEngine.TABot,
     )
+    signal2 = signal.model_copy(deep=True)
+    signal3 = signal.model_copy(deep=True)
+    signal3.current_price = 150.1
+    signal2.current_price = 150.0 + 1e-10
     print(signal.to_json_str())
+    # Test
+    print(f"signal == signal2: {signal == signal2}")  # True
+    print(f"signal == signal3: {signal == signal3}")  # False
+    print(f"signa_str == signal: {signal_str == signal}")  # True

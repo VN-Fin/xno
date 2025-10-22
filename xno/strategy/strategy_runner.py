@@ -279,3 +279,9 @@ class StrategyRunner(ABC):
             "final_time": self.current_state.candle,
         }
 
+    def continue_run(self):
+        """
+        Continue running the strategy from the last checkpoint or state.
+        :return:
+        """
+        raise NotImplementedError("Subclasses should implement this method.")

@@ -63,19 +63,9 @@ class StrategyRunner(abc.ABC):
         self.signals: List[float] | None = None
         self.ht_prices: List[float] | None = None
         self.ht_times: List[pd.Timestamp] | None = None
-        self.data_fields: Dict[str, FieldInfo] = {
-            # Add default fields
-            # Always include Close price
-            "Close": FieldInfo(field_id="Close", field_name="Close", ticker=self.symbol,)
-        }
-        if self.send_signal:
-            produce_message(
-                "ping",
-                "run_strategy",
-                f"Run strategy {self.strategy_id}",
-            )
+        self.data_fields: Dict[str, FieldInfo] = {}
 
-    def add_field(self, field_id: str, ticker: str, field_name: str):
+    def add_field(self, field_id: str, field_name: str, ticker: str | None = None):
         """
         Add a data field to be loaded.
         :param field_id:
@@ -83,6 +73,8 @@ class StrategyRunner(abc.ABC):
         :param field_name:
         :return:
         """
+        if ticker is None:
+            ticker = self.symbol
         if field_id == "Close":
             logging.warning(f"Field 'Close' is always included, skip adding again.")
         else:
@@ -92,6 +84,16 @@ class StrategyRunner(abc.ABC):
                 ticker=ticker,
             )
         return self
+
+    def __setup__(self):
+        default_field = FieldInfo(field_id="Close", field_name="Close", ticker=self.symbol)
+        self.data_fields["Close"] = default_field
+        # Initial strategy run ping
+        produce_message(
+            "ping",
+            "run_strategy",
+            f"Run strategy {self.strategy_id}",
+        )
 
     @abstractmethod
     def __load_data__(self):
@@ -203,6 +205,7 @@ class StrategyRunner(abc.ABC):
         self.__send_state__()
 
     def run(self):
+        self.__setup__()
         self.__load_data__()
         if len(self.datas) == 0:
             raise RuntimeError(f"No data loaded for symbol={self.symbol} from {self.run_from}")

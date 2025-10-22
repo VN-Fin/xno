@@ -116,5 +116,9 @@ if __name__ == "__main__":
         mode=AllowedTradeMode.LiveTrade,
         re_run=False,
     )
-    runner.add_field("Open").add_field("High").add_field("Low").add_field("Close").add_field("Volume")
+    runner.add_field(
+        "Volume", "Volume"
+    ).add_field(
+        "VN30Volume", "Volume", ticker="VN30"
+    )
     runner.run()

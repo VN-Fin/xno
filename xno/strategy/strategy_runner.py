@@ -1,7 +1,10 @@
 from abc import abstractmethod, ABC
 from typing import List, Dict
+
+from confluent_kafka import Producer
+
+from xno import settings
 from xno.connectors.rd import RedisClient
-from xno.stream import produce_message, flush_producer
 from xno.trade import (
     AllowedTradeMode,
     StrategyState,
@@ -16,6 +19,12 @@ import xno.utils.keys as ukeys
 import numpy as np
 
 from xno.utils.datas import load_data
+from xno.utils.stream import delivery_report
+
+producer = Producer({
+    'bootstrap.servers': settings.kafka_bootstrap_servers,
+})
+
 
 
 class StrategyRunner(ABC):
@@ -151,10 +160,11 @@ class StrategyRunner(ABC):
         # Serialize once
         signal_json = current_signal.to_json_str()
         # Send to Kafka
-        produce_message(
+        producer.produce(
             self.kafka_latest_signal_topic,
             key=strategy_id,
             value=signal_json,
+            callback=delivery_report
         )
         # Cache to Redis
         RedisClient.hset(
@@ -171,10 +181,11 @@ class StrategyRunner(ABC):
         """
         current_state_str = self.current_state.to_json_str()
         logging.debug(f"Sending latest state {current_state_str}")
-        produce_message(
+        producer.produce(
             self.kafka_latest_state_topic,
             key=self.strategy_id,
             value=current_state_str,
+            callback=delivery_report
         )
         # Set to redis
         RedisClient.hset(
@@ -206,25 +217,27 @@ class StrategyRunner(ABC):
         logging.info(f"Sending {len(send_states)} trading state records for strategy_id={self.strategy_id}")
         for record in self.trading_states[send_from_cp:]:
             record_str = record.to_json_str()
-            produce_message(
+            producer.produce(
                 self.kafka_history_state_topic,
                 key=self.strategy_id,
                 value=record_str,
+                callback=delivery_report
             )
         # Send latest state (current state)
         self.__send_state__()
-        flush_producer()
+        producer.flush()
 
     def run(self):
         # Setup fields
         self.__setup__()
         # Initial strategy run ping
-        produce_message(
+        producer.produce(
             "ping",
-            "run_strategy",
-            f"Run strategy {self.strategy_id}",
+            key="run_strategy",
+            value=f"Run strategy {self.strategy_id}",
+            callback=delivery_report
         )
-        flush_producer() # Ensure ping is sent before proceeding
+        producer.flush() # Ensure ping is sent before proceeding
         # Load data
         self.__load_data__()
         if len(self.datas) == 0:

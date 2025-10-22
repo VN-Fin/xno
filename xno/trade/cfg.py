@@ -1,4 +1,5 @@
 import logging
+import uuid
 from typing import Any, Iterable
 
 from cachetools.func import ttl_cache
@@ -48,10 +49,10 @@ class StrategyConfigLoader:
         with ExitStack() as stack:
             # Lock to ensure thread-safe read
             stack.enter_context(DistributedSemaphore())
-            session = stack.enter_context(SqlSession(settings.execution_db_name, 4))
+            session = stack.enter_context(SqlSession(settings.execution_db_name))
             result_iter = session.execute(
                 text(query),
-                {"engine": AllowedEngine.TABot},
+                {"engine": AllowedEngine.TABot, "symbol_type": symbol_type},
             )
 
         # Stream rows as they come (no fetchall)
@@ -138,5 +139,12 @@ if __name__ == "__main__":
     # Initial load
     # Example usage
     config = StrategyConfigLoader.get_config("fad40f3b-52a7-44d1-99cb-8d4b5aa257c5", AllowedTradeMode.BackTrade, "")
+    print(config)
+    print(config.model_dump_json())  # to string
+
+    configs = StrategyConfigLoader.get_live_strategy_configs("S")
+    print("Live strategy config len:", len(list(configs)))
+
+    config = StrategyConfigLoader.get_config(uuid.uuid4().__str__(), AllowedTradeMode.BackTrade, "")
     print(config)
     print(config.model_dump_json())  # to string

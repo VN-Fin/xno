@@ -8,7 +8,7 @@ from sqlalchemy import text
 from xno import settings
 from xno.connectors.semaphore import DistributedSemaphore
 from xno.connectors.sql import SqlSession
-from xno.trade import AllowedTradeMode, AllowedEngine
+from xno.trade.tp import AllowedTradeMode, AllowedEngine
 from contextlib import ExitStack
 
 
@@ -32,7 +32,7 @@ class StrategyConfig(BaseModel):
 
 class StrategyConfigLoader:
     @classmethod
-    def get_live_strategy_configs(cls) -> Iterable[StrategyConfig]:
+    def get_live_strategy_configs(cls, symbol_type) -> Iterable[StrategyConfig]:
         query = f"""
             SELECT
                 id,
@@ -42,7 +42,7 @@ class StrategyConfigLoader:
                 advanced_config as advanced_config,
                 engine as engine
             FROM public.strategy_overview
-            WHERE engine = :engine
+            WHERE engine = :engine AND symbol_type = :symbol_type
             ORDER BY symbol, id
         """
         with ExitStack() as stack:
@@ -69,6 +69,7 @@ class StrategyConfigLoader:
             yield StrategyConfig(
                 strategy_id=str(row.id),
                 symbol=row.symbol,
+                symbol_type=symbol_type,
                 timeframe=row.timeframe,
                 init_cash=init_cash,
                 run_from=run_from,
@@ -93,6 +94,7 @@ class StrategyConfigLoader:
             SELECT
                 id,
                 symbol,
+                symbol_type as symbol_type,
                 timeframe,
                 {column} as result,
                 advanced_config as advanced_config,
@@ -121,6 +123,7 @@ class StrategyConfigLoader:
         return StrategyConfig(
             strategy_id=row.id.__str__(),
             symbol=row.symbol,
+            symbol_type=row.symbol_type,
             timeframe=row.timeframe,
             init_cash=init_cash,
             run_from=run_from,

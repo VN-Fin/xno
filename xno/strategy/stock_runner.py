@@ -1,4 +1,5 @@
 """Migrate to new runner structure."""
+from abc import abstractmethod
 from datetime import timedelta
 from typing import List
 
@@ -15,9 +16,11 @@ class StockRunner(StrategyRunner):
     _hold_days = timedelta(days=3)
     _lot_size = 100
 
+    @abstractmethod
     def __generate_signal__(self) -> List[float]:
         raise NotImplementedError("Implement in subclass to generate signals.")
 
+    @abstractmethod
     def __load_data__(self):
         raise NotImplementedError("Implement in subclass to load data.")
 
@@ -35,7 +38,7 @@ class StockRunner(StrategyRunner):
         self.current_state.current_action = AllowedAction.Hold
         current_price = self.ht_prices[time_idx]  # Get the current price from the history prices]
         current_time = self.ht_times[time_idx]   # Current day from the timestamp
-        if current_time < self.cfg.run_to:
+        if current_time < self.run_to:
             self.checkpoint_idx = time_idx
         # The signal unverified, which is the current signal at the current time index
         sig: float = self.signals[time_idx]
@@ -108,8 +111,22 @@ class StockRunner(StrategyRunner):
 
 
 if __name__ == "__main__":
+    class CustomStockRunner(StockRunner):
+        def __generate_signal__(self) -> List[float]:
+            # Example: Generate random signals for demonstration
+            import numpy as np
+            return np.random.uniform(-1, 1, size=len(self.ht_prices)).tolist()
+
+        def __load_data__(self):
+            # Example: Load dummy data for demonstration
+            import pandas as pd
+            import numpy as np
+            dates = pd.date_range(start="2024-01-01", periods=100, freq='D')
+            prices = pd.Series(100 + np.random.randn(100).cumsum(), index=dates)
+            self.datas = pd.DataFrame({'Close': prices})
+
     # Example usage
-    runner = StockRunner(
+    runner = CustomStockRunner(
         strategy_id="fad40f3b-52a7-44d1-99cb-8d4b5aa257c5",
         send_signal=False,
         mode=AllowedTradeMode.LiveTrade,
@@ -121,3 +138,4 @@ if __name__ == "__main__":
         "VN30Volume", "Volume", ticker="VN30"
     )
     runner.run()
+    print(runner.stats())

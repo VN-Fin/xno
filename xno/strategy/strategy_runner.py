@@ -1,7 +1,7 @@
 from abc import abstractmethod, ABC
 from typing import List, Dict
 from xno.connectors.rd import RedisClient
-from xno.stream import produce_message
+from xno.stream import produce_message, flush_producer
 from xno.trade import (
     AllowedTradeMode,
     StrategyState,
@@ -213,6 +213,7 @@ class StrategyRunner(ABC):
             )
         # Send latest state (current state)
         self.__send_state__()
+        flush_producer()
 
     def run(self):
         # Setup fields
@@ -223,6 +224,7 @@ class StrategyRunner(ABC):
             "run_strategy",
             f"Run strategy {self.strategy_id}",
         )
+        flush_producer() # Ensure ping is sent before proceeding
         # Load data
         self.__load_data__()
         if len(self.datas) == 0:

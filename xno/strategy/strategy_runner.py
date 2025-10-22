@@ -43,7 +43,7 @@ class StrategyRunner(ABC):
         self.run_from: pd.Timestamp = pd.Timestamp.now()
         self.run_to: pd.Timestamp = pd.Timestamp.now()
         self.datas: pd.DataFrame = pd.DataFrame()
-        self.cfg = StrategyConfigLoader.get_config(self.strategy_id, self.mode, "")
+        self.cfg = StrategyConfigLoader.get_config(self.strategy_id, self.mode)
         if self.cfg is None:
             raise RuntimeError(f"Strategy config not found for strategy_id={self.strategy_id} and mode={self.mode}")
         else:

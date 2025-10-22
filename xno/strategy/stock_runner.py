@@ -4,7 +4,7 @@ from typing import List
 
 from xno.strategy.strategy_runner import StrategyRunner
 from xno.trade import (
-    AllowedAction,
+    AllowedAction, AllowedTradeMode,
 )
 import logging
 
@@ -106,3 +106,15 @@ class StockRunner(StrategyRunner):
         self.current_state.trade_size = current_trade_size
         self.current_time_idx = time_idx
         self.trading_states.append(self.current_state.model_copy(deep=True))
+
+
+if __name__ == "__main__":
+    # Example usage
+    runner = StockRunner(
+        strategy_id="fad40f3b-52a7-44d1-99cb-8d4b5aa257c5",
+        send_signal=False,
+        mode=AllowedTradeMode.LiveTrade,
+        re_run=False,
+    )
+    runner.add_field("Open").add_field("High").add_field("Low").add_field("Close").add_field("Volume")
+    runner.run()

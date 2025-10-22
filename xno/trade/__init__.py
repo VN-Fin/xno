@@ -14,3 +14,4 @@ from xno.trade.tp import (
     TradeModeType,
     AllowedSymbolType
 )
+from xno.trade.fields import FieldInfo

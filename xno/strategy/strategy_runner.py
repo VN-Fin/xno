@@ -1,6 +1,6 @@
 import abc
 from abc import abstractmethod
-from typing import List, Set
+from typing import List, Set, Dict
 from xno.connectors.rd import RedisClient
 from xno.stream import produce_message
 from xno.trade import (
@@ -8,7 +8,7 @@ from xno.trade import (
     StrategyState,
     StrategySignal,
     AllowedAction,
-    StrategyConfigLoader,
+    StrategyConfigLoader, FieldInfo,
 )
 import pandas as pd
 import logging
@@ -16,6 +16,9 @@ import logging
 import xno.utils.keys as ukeys
 
 class StrategyRunner(abc.ABC):
+    """
+    The base class for running a trading strategy.
+    """
     def __init__(
             self,
             strategy_id: str,
@@ -60,7 +63,11 @@ class StrategyRunner(abc.ABC):
         self.signals: List[float] | None = None
         self.ht_prices: List[float] | None = None
         self.ht_times: List[pd.Timestamp] | None = None
-        self.data_fields: Set[str] = set()
+        self.data_fields: Dict[str, FieldInfo] = {
+            # Add default fields
+            # Always include Close price
+            "Close": FieldInfo(field_id="Close", field_name="Close", ticker=self.symbol,)
+        }
         if self.send_signal:
             produce_message(
                 "ping",
@@ -68,8 +75,22 @@ class StrategyRunner(abc.ABC):
                 f"Run strategy {self.strategy_id}",
             )
 
-    def add_field(self, field: str):
-        self.data_fields.add(field)
+    def add_field(self, field_id: str, ticker: str, field_name: str):
+        """
+        Add a data field to be loaded.
+        :param field_id:
+        :param ticker:
+        :param field_name:
+        :return:
+        """
+        if field_id == "Close":
+            logging.warning(f"Field 'Close' is always included, skip adding again.")
+        else:
+            self.data_fields[field_id] = FieldInfo(
+                field_id=field_id,
+                field_name=field_name,
+                ticker=ticker,
+            )
         return self
 
     @abstractmethod

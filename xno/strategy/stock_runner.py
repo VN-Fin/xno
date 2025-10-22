@@ -20,10 +20,6 @@ class StockRunner(StrategyRunner):
     def __generate_signal__(self) -> List[float]:
         raise NotImplementedError("Implement in subclass to generate signals.")
 
-    @abstractmethod
-    def __load_data__(self):
-        raise NotImplementedError("Implement in subclass to load data.")
-
     def __step__(self, time_idx: int):
         """
         Run the trading algorithm state, which includes setting up the algorithm, generating signals, and verifying the trading signal.

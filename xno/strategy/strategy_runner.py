@@ -13,6 +13,10 @@ from xno.trade import (
 import pandas as pd
 import logging
 import xno.utils.keys as ukeys
+import numpy as np
+
+from xno.utils.datas import load_data
+
 
 class StrategyRunner(ABC):
     """
@@ -72,31 +76,29 @@ class StrategyRunner(ABC):
         :param field_name:
         :return:
         """
-        if ticker is None:
-            ticker = self.symbol
         if field_id == "Close":
-            logging.warning(f"Field 'Close' is always included, skip adding again.")
-        else:
-            self.data_fields[field_id] = FieldInfo(
-                field_id=field_id,
-                field_name=field_name,
-                ticker=ticker,
-            )
+            logging.debug("Field 'Close' is always included; skip adding again.")
+            return self
+        # Add field info if not exists or override existing
+        self.data_fields[field_id] = FieldInfo(
+            field_id=field_id,
+            field_name=field_name,
+            ticker=ticker or self.symbol,
+        )
         return self
 
     def __setup__(self):
         default_field = FieldInfo(field_id="Close", field_name="Close", ticker=self.symbol)
         self.data_fields["Close"] = default_field
-        # Initial strategy run ping
-        produce_message(
-            "ping",
-            "run_strategy",
-            f"Run strategy {self.strategy_id}",
-        )
 
-    @abstractmethod
     def __load_data__(self):
-        raise NotImplementedError("Subclasses should implement this method.")
+        # TODO: Load additional fields
+        self.datas = load_data(
+            resolution=self.timeframe,
+            symbol=self.symbol,
+            start=self.run_from,
+            factor=1000,
+        )
 
     @abstractmethod
     def __generate_signal__(self) -> List[float]:
@@ -218,7 +220,15 @@ class StrategyRunner(ABC):
         self.__send_state__()
 
     def run(self):
+        # Setup fields
         self.__setup__()
+        # Initial strategy run ping
+        produce_message(
+            "ping",
+            "run_strategy",
+            f"Run strategy {self.strategy_id}",
+        )
+        # Load data
         self.__load_data__()
         if len(self.datas) == 0:
             raise RuntimeError(f"No data loaded for symbol={self.symbol} from {self.run_from}")
@@ -253,6 +263,12 @@ class StrategyRunner(ABC):
         logging.info(f"Loaded {len(self.datas)} rows of data for symbol={self.symbol}")
         # Execute the expression to get signals
         self.signals = self.__generate_signal__()
+        if isinstance(self.signals, (np.ndarray, pd.Series)):
+            self.signals = self.signals.tolist()
+        # Check length
+        if len(self.signals) != len(self.ht_prices):
+            raise RuntimeError(f"Signal length {len(self.signals)} != price length {len(self.ht_prices)}")
+
         # Step through each signal (buy/sell/hold) and simulate trading
         for time_idx in range(len(self.signals)):
             self.__step__(time_idx)

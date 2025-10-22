@@ -56,6 +56,12 @@ class StrategyState(BaseModel):
             dt = pd.Timestamp(dt).to_pydatetime()
         return dt.isoformat()
 
+    @field_serializer('*')
+    def serialize_numpy(self, value):
+        if isinstance(value, (np.generic,)):
+            return value.item()  # convert numpy.int64 → int, numpy.float64 → float
+        return value
+
     def to_json_str(self):
         return self.model_dump_json()
 

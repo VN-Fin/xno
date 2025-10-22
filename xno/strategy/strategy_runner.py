@@ -1,6 +1,5 @@
-import abc
-from abc import abstractmethod
-from typing import List, Set, Dict
+from abc import abstractmethod, ABC
+from typing import List, Dict
 from xno.connectors.rd import RedisClient
 from xno.stream import produce_message
 from xno.trade import (
@@ -8,14 +7,14 @@ from xno.trade import (
     StrategyState,
     StrategySignal,
     AllowedAction,
-    StrategyConfigLoader, FieldInfo,
+    StrategyConfigLoader,
+    FieldInfo,
 )
 import pandas as pd
 import logging
-
 import xno.utils.keys as ukeys
 
-class StrategyRunner(abc.ABC):
+class StrategyRunner(ABC):
     """
     The base class for running a trading strategy.
     """

@@ -99,7 +99,6 @@ class StockRunner(StrategyRunner):
             self.current_state.t0_size += current_trade_size  # Update T0 position
             self.current_state.current_position += current_trade_size  # Update total shares held
             self.current_state.current_action = AllowedAction.Buy  # Set action to buy
-
         # Update the current state with price and time
         self.current_state.current_price = current_price
         self.current_state.candle = current_time

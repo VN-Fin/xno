@@ -20,11 +20,17 @@ import numpy as np
 
 from xno.utils.datas import load_data
 from xno.utils.stream import delivery_report
+import threading
 
-producer = Producer({
-    'bootstrap.servers': settings.kafka_bootstrap_servers,
-})
 
+_local = threading.local()
+
+def get_producer():
+    if not hasattr(_local, "producer"):
+        _local.producer = Producer({
+            "bootstrap.servers": settings.kafka_bootstrap_servers,
+        })
+    return _local.producer
 
 
 class StrategyRunner(ABC):
@@ -37,6 +43,7 @@ class StrategyRunner(ABC):
             mode: AllowedTradeMode,
             re_run: bool = False,
     ):
+        self.producer = get_producer()
         self.redis_latest_signal_key = ukeys.generate_latest_signal_key(mode)
         self.redis_latest_state_key = ukeys.generate_latest_state_key(mode)
         self.kafka_latest_signal_topic = ukeys.generate_latest_signal_topic(mode)
@@ -160,7 +167,7 @@ class StrategyRunner(ABC):
         # Serialize once
         signal_json = current_signal.to_json_str()
         # Send to Kafka
-        producer.produce(
+        self.producer.produce(
             self.kafka_latest_signal_topic,
             key=strategy_id,
             value=signal_json,
@@ -181,7 +188,7 @@ class StrategyRunner(ABC):
         """
         current_state_str = self.current_state.to_json_str()
         logging.debug(f"Sending latest state {current_state_str}")
-        producer.produce(
+        self.producer.produce(
             self.kafka_latest_state_topic,
             key=self.strategy_id,
             value=current_state_str,
@@ -217,7 +224,7 @@ class StrategyRunner(ABC):
         logging.info(f"Sending {len(send_states)} trading state records for strategy_id={self.strategy_id}")
         for record in self.trading_states[send_from_cp:]:
             record_str = record.to_json_str()
-            producer.produce(
+            self.producer.produce(
                 self.kafka_history_state_topic,
                 key=self.strategy_id,
                 value=record_str,
@@ -225,19 +232,19 @@ class StrategyRunner(ABC):
             )
         # Send latest state (current state)
         self.__send_state__()
-        producer.flush()
+        self.producer.flush()
 
     def run(self):
         # Setup fields
         self.__setup__()
         # Initial strategy run ping
-        producer.produce(
+        self.producer.produce(
             "ping",
             key="run_strategy",
             value=f"Run strategy {self.strategy_id}",
             callback=delivery_report
         )
-        producer.flush() # Ensure ping is sent before proceeding
+        self.producer.flush() # Ensure ping is sent before proceeding
         # Load data
         self.__load_data__()
         if len(self.datas) == 0:

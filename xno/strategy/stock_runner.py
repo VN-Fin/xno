@@ -124,7 +124,6 @@ if __name__ == "__main__":
     # Example usage
     runner = CustomStockRunner(
         strategy_id="fad40f3b-52a7-44d1-99cb-8d4b5aa257c5",
-        send_signal=False,
         mode=AllowedTradeMode.LiveTrade,
         re_run=False,
     )

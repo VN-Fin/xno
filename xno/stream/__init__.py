@@ -8,6 +8,9 @@ __all__ = ["produce_message"]
 
 producer = Producer({
     'bootstrap.servers': settings.kafka_bootstrap_servers,
+    'queue.buffering.max.messages': 1000000,  # optional tuning
+    'queue.buffering.max.kbytes': 1048576,  # 1GB total buffer if you have memory
+    'queue.buffering.max.ms': 100,  # batch flush interval
 })
 
 

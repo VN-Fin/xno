@@ -27,7 +27,6 @@ class StrategyRunner(ABC):
             strategy_id: str,
             mode: AllowedTradeMode,
             re_run: bool = False,
-            send_signal: bool = False,
     ):
         self.redis_latest_signal_key = ukeys.generate_latest_signal_key(mode)
         self.redis_latest_state_key = ukeys.generate_latest_state_key(mode)
@@ -35,7 +34,6 @@ class StrategyRunner(ABC):
         self.kafka_latest_state_topic = ukeys.generate_latest_state_topic(mode)
         self.kafka_history_state_topic = ukeys.generate_history_state_topic(mode)
         self.checkpoint_idx = 0
-        self.send_signal = send_signal
         self.strategy_id = strategy_id
         self.mode = mode
         self.re_run = re_run
@@ -186,9 +184,6 @@ class StrategyRunner(ABC):
         )
 
     def __done__(self):
-        if not self.send_signal:
-            logging.info(f"send_signal is False, skip sending records for strategy_id={self.strategy_id}")
-            return # Skip sending
         send_from_cp = self.checkpoint_idx
         if self.re_run:
             logging.info(f"Re-run mode, send all existing records for strategy_id={self.strategy_id}")

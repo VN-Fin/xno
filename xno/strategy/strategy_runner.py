@@ -1,7 +1,8 @@
 import abc
 from abc import abstractmethod
-from typing import List
+from typing import List, Set
 from xno.connectors.rd import RedisClient
+from xno.stream import produce_message
 from xno.trade import (
     AllowedTradeMode,
     StrategyState,
@@ -12,6 +13,7 @@ from xno.trade import (
 import pandas as pd
 import logging
 
+import xno.utils.keys as ukeys
 
 class StrategyRunner(abc.ABC):
     def __init__(
@@ -21,8 +23,11 @@ class StrategyRunner(abc.ABC):
             re_run: bool = False,
             send_signal: bool = False,
     ):
-        self.latest_signal_key = "strategy_latest_signal:" + strategy_id
-        self.latest_state_key = "strategy_latest_state:" + strategy_id
+        self.redis_latest_signal_key = ukeys.generate_latest_signal_key(mode)
+        self.redis_latest_state_key = ukeys.generate_latest_state_key(mode)
+        self.kafka_latest_signal_topic = ukeys.generate_latest_signal_topic(mode)
+        self.kafka_latest_state_topic = ukeys.generate_latest_state_topic(mode)
+        self.kafka_history_state_topic = ukeys.generate_history_state_topic(mode)
         self.checkpoint_idx = 0
         self.send_signal = send_signal
         self.strategy_id = strategy_id
@@ -55,12 +60,17 @@ class StrategyRunner(abc.ABC):
         self.signals: List[float] | None = None
         self.ht_prices: List[float] | None = None
         self.ht_times: List[pd.Timestamp] | None = None
+        self.data_fields: Set[str] = set()
         if self.send_signal:
             produce_message(
                 "ping",
                 "run_strategy",
                 f"Run strategy {self.strategy_id}",
             )
+
+    def add_field(self, field: str):
+        self.data_fields.add(field)
+        return self
 
     @abstractmethod
     def __load_data__(self):
@@ -75,7 +85,14 @@ class StrategyRunner(abc.ABC):
         raise NotImplementedError("Subclasses should implement this method.")
 
     def __send_signal__(self):
-        prev_signal = RedisClient.get(self.latest_signal_key)
+        """
+        [IF HAS CHANGED] Send the latest strategy signal to Kafka and Redis.
+        :return:
+        """
+        prev_signal = RedisClient.hget(
+            name=self.redis_latest_signal_key,
+            key=self.strategy_id,
+        )
         # Send signal
         current_signal = StrategySignal(
             strategy_id=self.current_state.strategy_id,
@@ -92,22 +109,43 @@ class StrategyRunner(abc.ABC):
         if prev_signal is not None:
             prev_signal = StrategySignal.model_validate_json(prev_signal)
 
-        if current_signal == prev_signal:
+        # Hash weight unchanged, skip sending
+        if current_signal.current_weight == prev_signal.current_weight:
             logging.info(f"No change in signal for strategy_id={self.strategy_id}, skip sending.")
             return
 
         current_signal = current_signal.to_json_str()
-        if current_signal != "":
-            logging.debug(f"Sending signal {current_signal}")
-            produce_message(
-                TAExpressionConfig.kafka_signal_latest_topic,
-                key=self.strategy_id,
-                value=current_signal,
-            )
-            # Set to redis
-            RedisClient.set(self.latest_signal_key, current_signal)
-        else:
-            logging.warning(f"Invalid signal for strategy_id={self.strategy_id}, skip sending.")
+        logging.debug(f"Sending signal {current_signal}")
+        produce_message(
+            self.kafka_latest_signal_topic,
+            key=self.strategy_id,
+            value=current_signal,
+        )
+        # Set to redis
+        RedisClient.hset(
+            name=self.redis_latest_signal_key,
+            key=self.strategy_id,
+            value=current_signal,
+        )
+
+    def __send_state__(self):
+        """
+        [ALWAYS] Send the latest strategy state to Kafka and Redis.
+        :return:
+        """
+        current_state_str = self.current_state.to_json_str()
+        logging.debug(f"Sending latest state {current_state_str}")
+        produce_message(
+            self.kafka_latest_state_topic,
+            key=self.strategy_id,
+            value=current_state_str,
+        )
+        # Set to redis
+        RedisClient.hset(
+            name=self.redis_latest_state_key,
+            key=self.strategy_id,
+            value=current_state_str,
+        )
 
     def __done__(self):
         if not self.send_signal:
@@ -136,16 +174,12 @@ class StrategyRunner(abc.ABC):
         for record in self.trading_states[send_from_cp:]:
             record_str = record.to_json_str()
             produce_message(
-                TAExpressionConfig.kafka_state_history_topic,
+                self.kafka_history_state_topic,
                 key=self.strategy_id,
                 value=record_str,
             )
         # Send latest state (current state)
-        produce_message(
-            TAExpressionConfig.kafka_state_latest_topic,
-            key=self.strategy_id,
-            value=self.current_state.to_json_str()
-        )
+        self.__send_state__()
 
     def run(self):
         self.__load_data__()

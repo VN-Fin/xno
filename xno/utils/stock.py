@@ -1,3 +1,7 @@
+"""
+The utility functions for stock trading operations.
+"""
+
 def round_to_lot(value, lot_size):
     """Round value to the nearest lot size."""
     remainder = value % lot_size

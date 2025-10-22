@@ -40,7 +40,7 @@ class StrategyRunner(ABC):
     def __init__(
             self,
             strategy_id: str,
-            mode: AllowedTradeMode,
+            mode: AllowedTradeMode | int,
             re_run: bool = False,
     ):
         self.producer = get_producer()

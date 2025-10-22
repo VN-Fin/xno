@@ -108,47 +108,61 @@ class StrategyRunner(ABC):
 
     def __send_signal__(self):
         """
-        [IF HAS CHANGED] Send the latest strategy signal to Kafka and Redis.
-        :return:
+        Send the latest strategy signal to Kafka and Redis
+        only if the signal has changed.
         """
-        prev_signal = RedisClient.hget(
-            name=self.redis_latest_signal_key,
-            key=self.strategy_id,
-        )
-        # Send signal
+        state = self.current_state
+        redis_key = self.redis_latest_signal_key
+        strategy_id = self.strategy_id
+        # Retrieve previous signal JSON (bytes or str)
+        prev_raw = RedisClient.hget(name=redis_key, key=strategy_id)
+        # Build current signal model
         current_signal = StrategySignal(
-            strategy_id=self.current_state.strategy_id,
-            symbol=self.current_state.symbol,
-            symbol_type=self.current_state.symbol_type,
-            candle=self.current_state.candle,
-            current_price=self.current_state.current_price,
-            current_weight=self.current_state.current_weight,
-            current_action=self.current_state.current_action,
-            bt_mode=self.current_state.bt_mode,
-            engine=self.current_state.engine,
+            strategy_id=state.strategy_id,
+            symbol=state.symbol,
+            symbol_type=state.symbol_type,
+            candle=state.candle,
+            current_price=state.current_price,
+            current_weight=state.current_weight,
+            current_action=state.current_action,
+            bt_mode=state.bt_mode,
+            engine=state.engine,
         )
-
-        if prev_signal is not None:
-            prev_signal = StrategySignal.model_validate_json(prev_signal)
-
-        # Hash weight unchanged, skip sending
-        if current_signal.current_weight == prev_signal.current_weight:
-            logging.info(f"No change in signal for strategy_id={self.strategy_id}, skip sending.")
+        # If previous exists, decode; otherwise force send
+        if prev_raw:
+            try:
+                prev_signal = StrategySignal.model_validate_json(prev_raw)
+            except Exception as e:
+                logging.warning(f"Invalid prev signal for {strategy_id}: {e}, resending current.")
+                prev_signal = None
+        else:
+            prev_signal = None
+        # Compare relevant fields (weight + action + price)
+        if (
+                prev_signal
+                and current_signal.current_weight == prev_signal.current_weight
+                and current_signal.current_action == prev_signal.current_action
+                and abs(current_signal.current_price - prev_signal.current_price) < 1e-9
+        ):
+            # Skip logging each time; use debug for quiet mode
+            logging.debug(f"No signal change for {strategy_id}, skip sending.")
             return
 
-        current_signal = current_signal.to_json_str()
-        logging.debug(f"Sending signal {current_signal}")
+        # Serialize once
+        signal_json = current_signal.to_json_str()
+        # Send to Kafka
         produce_message(
             self.kafka_latest_signal_topic,
-            key=self.strategy_id,
-            value=current_signal,
+            key=strategy_id,
+            value=signal_json,
         )
-        # Set to redis
+        # Cache to Redis
         RedisClient.hset(
-            name=self.redis_latest_signal_key,
-            key=self.strategy_id,
-            value=current_signal,
+            name=redis_key,
+            key=strategy_id,
+            value=signal_json,
         )
+        logging.info(f"Signal sent for {strategy_id}: {signal_json}")
 
     def __send_state__(self):
         """

@@ -1,7 +1,7 @@
 import logging
 
 from confluent_kafka import Producer
-
+import time
 from xno import settings
 
 __all__ = ["produce_message"]
@@ -16,17 +16,21 @@ producer = Producer({
 
 
 def delivery_report(err, msg):
-    """ Called once for each message produced to indicate delivery result.
-        Triggered by poll() or flush(). """
     if err is not None:
         logging.error(f'Message delivery failed: {err}')
-
-
+    else:
+        logging.debug(f'Message delivered to {msg.topic()} [{msg.partition()}]')
 
 def produce_message(topic: str, key: str, value: str):
-    try:
-        producer.produce(topic, key=key, value=value, callback=delivery_report)
-    except BufferError:
-        logging.warning("Kafka local buffer full, flushing...")
-        producer.flush(1.0)
-        producer.produce(topic, key=key, value=value, callback=delivery_report)
+    """Produce a message with backpressure control."""
+    while True:
+        try:
+            producer.produce(topic, key=key, value=value, callback=delivery_report)
+            # Trigger callback handling and free up buffer space
+            producer.poll(0)
+            break
+        except BufferError:
+            # Buffer full — wait and retry instead of busy flushing
+            logging.warning("Kafka buffer full, waiting before retry...")
+            producer.poll(0.5)  # let some messages clear out
+            time.sleep(0.1)

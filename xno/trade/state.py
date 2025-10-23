@@ -30,10 +30,10 @@ class StrategyState(BaseModel):
     run_from: DateTimeType # Optional: Define the time range for the strategy run
     run_to: DateTimeType # Optional: Define the time range for the strategy run
     current_price: NumericType # Current price of the asset
-    current_position: NumericType # Number of stocks/contracts held
+    current_position: NumericType # Number of stocks/contracts held (num of holding shares/contracts)
     current_weight: NumericType # -1 to 1
     current_action: ActionType # B/S/H (see AllowedAction)
-    trade_size: NumericType # Size of the trade to be executed
+    trade_size: NumericType # Size of the trade to be executed (target_amount to buy/sell)
     bt_mode: TradeModeType # BackTrade/PaperTrade/LiveTrade (see AllowedTradeMode)
     current_time_idx: NumericType = 0  # To track the index of the current time in back/live/paper trade
     t0_size: NumericType = 0.0 # Applied for stock T+3, set to 0 if not applicable

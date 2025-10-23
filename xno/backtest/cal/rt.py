@@ -9,7 +9,14 @@ def get_returns(
         prices,
         target_sizes
 ) -> pd.Series:
-    """Calculate step returns based on target sizes and prices."""
+    """
+    Calculate step returns based on target sizes and prices.
+    init cash: 500,
+    09:00 - 500m  1  1950 ->                   = 0%
+    09:01 - 505m  0  1955 -> (505 - 500) / 500 = 1%
+    09:02 - 510m  0  1960 -> (510 - 505) / 505 = 0.990099%
+    09:03 - 500m  0  1950 -> (500 - 510) / 510 = -1.960784%
+    """
     # Validation
     if len(prices) != len(target_sizes):
         raise ValueError("Prices and target sizes must have the same length.")

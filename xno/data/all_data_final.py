@@ -1,20 +1,29 @@
-import time
 import pandas as pd
-from ohlcv import OhlcvDataManager
-from fetchData import DataFetcher
-import fields
-from vnstock import Finance
+from xno.data.ohlcv import OhlcvDataManager
+from xno.data import fields
+from xno.data.financeData import get_financial_data
+from typing import Literal
 
 
 class AllData:
     def __init__(self):
         self.fields = set()
+        self.ohlcv_fields = set()
+        self.finance_fields = set()
+        self.always_include_close = True
 
     def add_field(self, field_name: str) -> 'AllData':
         self.fields.add(field_name)
+
+        ohlcv_values = [f.value for f in fields.OHLCV]
+        if field_name in ohlcv_values:
+            self.ohlcv_fields.add(field_name)
+        else:
+            self.finance_fields.add(field_name)
+
         return self
 
-    def get(self, resolution: str, symbol: str) -> pd.DataFrame:
+    def get(self, resolution: str, symbol: str, period: Literal['quarter', 'year'] = 'quarter') -> pd.DataFrame:
         OhlcvDataManager.stats()
         ohlcv_df = OhlcvDataManager.get(resolution, symbol, factor=1000)
         if ohlcv_df.empty:
@@ -23,75 +32,67 @@ class AllData:
         ohlcv_df.index = pd.to_datetime(ohlcv_df.index)
         ohlcv_df = ohlcv_df.sort_index(ascending=True)
 
-        # Lấy dữ liệu tài chính
-        finance = Finance(symbol=symbol, source='VCI', period="quarter", get_all=True)
-        incomStatement_df = finance.income_statement(period='quarter', lang='vi')
-        balanSheet_df = finance.balance_sheet(period='quarter', lang='vi')
-        cashFlow_df = finance.cash_flow(period='quarter', lang='vi')
-        ratio_df = finance.ratio(period='quarter', lang='vi')
+        ohlcv_df.columns = [col.capitalize() for col in ohlcv_df.columns]
 
-        if ratio_df.columns.nlevels > 1:
-            ratio_df.columns = ratio_df.columns.get_level_values(-1)
+        # Always include Close
+        selected_ohlcv_cols = ['Close']
 
-        def quarter_to_date(row, year_col='Năm', quarter_col='Kỳ'):
-            if year_col not in row.index or quarter_col not in row.index:
-                return pd.NaT
-            year = row[year_col]
-            quarter = row[quarter_col]
-            if quarter == 1:
-                return pd.Timestamp(f'{year}-03-31')
-            elif quarter == 2:
-                return pd.Timestamp(f'{year}-06-30')
-            elif quarter == 3:
-                return pd.Timestamp(f'{year}-09-30')
-            elif quarter == 4:
-                return pd.Timestamp(f'{year}-12-31')
+        # Add any additional OHLCV fields requested
+        for col in self.ohlcv_fields:
+            if col in ohlcv_df.columns and col != 'Close':
+                selected_ohlcv_cols.append(col)
+
+        result_df = ohlcv_df[selected_ohlcv_cols].copy()
+
+        # Add financial fields if requested
+        if len(self.finance_fields) > 0:
+            # Lấy dữ liệu tài chính từ financeData module
+            financial_df = get_financial_data(symbol=symbol, period=period)
+
+            if financial_df.empty:
+                print("Warning: No financial data available.")
             else:
-                return pd.NaT
+                selected_financial_cols = [col for col in self.finance_fields if col in financial_df.columns]
 
-        financial_dfs = {
-            'income_statement': incomStatement_df,
-            'balance_sheet': balanSheet_df,
-            'cash_flow': cashFlow_df,
-            'ratio': ratio_df
-        }
+                if selected_financial_cols:
+                    selected_financial = financial_df[selected_financial_cols]
+                    selected_financial = selected_financial.reindex(result_df.index, method='ffill')
+                    result_df = result_df.join(selected_financial, how='left')
 
-        processed_dfs = {}
-        for key, df in financial_dfs.items():
-            if 'Năm' in df.columns and 'Kỳ' in df.columns:
-                df['time'] = df.apply(lambda row: quarter_to_date(row, 'Năm', 'Kỳ'), axis=1)
-                df = df.dropna(subset=['time'])
-                df.set_index('time', inplace=True)
-                df.drop(columns=['Năm', 'Kỳ', 'CP'], inplace=True, errors='ignore')
-                df.columns = [f"{key}_{col}" for col in df.columns]
-                processed_dfs[key] = df.sort_index(ascending=True)
-            else:
-                print(f"Warning: {key} does not have 'Năm' or 'Kỳ' columns. Skipping.")
-
-        if processed_dfs:
-            financial_df = pd.concat(processed_dfs.values(), axis=1)
-        else:
-            financial_df = pd.DataFrame(index=ohlcv_df.index)
-            print("Warning: No financial data processed.")
-
-        selected_columns = [col for col in self.fields if col in financial_df.columns]
-        selected_financial = financial_df[selected_columns]
-
-        selected_financial = selected_financial.reindex(ohlcv_df.index, method='ffill')
-
-        result_df = ohlcv_df.join(selected_financial, how='left')
         result_df = result_df.infer_objects(copy=False)
-
+        
         return result_df
 
 if __name__ == "__main__":
     OhlcvDataManager.consume_realtime()
+
+    # Test with OHLCV + Financial fields
+    print("=== Test 1: OHLCV + Financial fields ===")
     all_data = AllData() \
+        .add_field(fields.OHLCV.OPEN) \
+        .add_field(fields.OHLCV.HIGH) \
+        .add_field(fields.OHLCV.LOW) \
+        .add_field(fields.OHLCV.VOLUME) \
         .add_field(fields.IncomeStatement.CHI_PHI_TAI_CHINH) \
         .add_field(fields.BalanceSheet.DAU_TU_DAI_HAN_DONG) \
-        .add_field(fields.CashFlow.TANG_GIAM_CAC_KHOAN_PHAI_THU) \
-        .add_field(fields.Ratio.P_E) \
+        .add_field(fields.Ratio.P_E)
 
-    re = all_data.get(resolution="D", symbol="SSI")
-    print(re[-1:].to_string(index=True, header=True, justify='left'))
-    print(f"Result dtypes:\n{re.dtypes}")
+    re = all_data.get(resolution="D", symbol="SSI", period="quarter")
+    print(re[-5:].to_string(index=True, header=True, justify='left'))
+    print(f"\nColumns: {list(re.columns)}")
+
+    # Test default behavior (no fields added - should return Close only)
+    print("\n=== Test 2: Default (Close always included) ===")
+    all_data_default = AllData()
+    re_default = all_data_default.get(resolution="D", symbol="SSI", period="quarter")
+    print(re_default[-5:].to_string(index=True, header=True, justify='left'))
+    print(f"\nColumns: {list(re_default.columns)}")
+
+    # Test only financial fields (should include Close + financial fields)
+    print("\n=== Test 3: Only Financial fields (Close always included) ===")
+    all_data_finance = AllData() \
+        .add_field(fields.IncomeStatement.CHI_PHI_TAI_CHINH) \
+        .add_field(fields.Ratio.P_E)
+    re_finance = all_data_finance.get(resolution="D", symbol="SSI", period="quarter")
+    print(re_finance[-5:].to_string(index=True, header=True, justify='left'))
+    print(f"\nColumns: {list(re_finance.columns)}")

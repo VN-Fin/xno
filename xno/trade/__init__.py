@@ -4,10 +4,10 @@ from xno.trade.cfg import StrategyConfigLoader, StrategyConfig, AdvancedConfig
 from xno.trade.tp import (
     AllowedAction,
     AllowedTradeMode,
-    DateTimeType,
+    # DateTimeType,
     SymbolType,
-    BooleanType,
-    NumericType,
+    # BooleanType,
+    # NumericType,
     EngineType,
     ActionType,
     AllowedEngine,

@@ -1,5 +1,12 @@
 import enum
 
+class OHLCV(str, enum.Enum):
+    OPEN = "Open"
+    HIGH = "High"
+    LOW = "Low"
+    CLOSE = "Close"
+    VOLUME = "Volume"
+
 class IncomeStatement(str, enum.Enum):
     DOANH_THU_DONG = "income_statement_Doanh thu (đồng)"
     TANG_TRUONG_DOANH_THU = "income_statement_Tăng trưởng doanh thu (%)"

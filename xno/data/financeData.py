@@ -1,12 +1,17 @@
+import logging
+
 import pandas as pd
 from vnstock import Finance
 from cachetools import TTLCache, cached
 from typing import Literal
 
+from xno.utils.dc import timing
+
 # Cache for 10 minutes (600 seconds)
 finance_cache = TTLCache(maxsize=128, ttl=600)
 
 @cached(cache=finance_cache)
+@timing
 def get_financial_data(
     symbol: str,
     period: Literal['quarter', 'year'] = 'quarter'
@@ -52,27 +57,29 @@ def get_financial_data(
 
     processed_dfs = {}
     for key, df in financial_dfs.items():
-        if 'Năm' in df.columns:
-            if 'Kỳ' in df.columns:
-                df['time'] = df.apply(lambda row: quarter_to_date(row, 'Năm', 'Kỳ'), axis=1)
-                df = df.dropna(subset=['time'])
-                df.set_index('time', inplace=True)
-                df.drop(columns=['Năm', 'Kỳ', 'CP'], inplace=True, errors='ignore')
-            else:
-                df['time'] = df.apply(lambda row: year_to_date(row, 'Năm'), axis=1)
-                df = df.dropna(subset=['time'])
-                df.set_index('time', inplace=True)
-                df.drop(columns=['Năm', 'CP'], inplace=True, errors='ignore')
+        if 'Năm' not in df.columns:
+            logging.warning(f"Warning: {key} does not have 'Năm' column. Skipping.")
+            continue
 
-            df.columns = [f"{key}_{col}" for col in df.columns]
-            processed_dfs[key] = df.sort_index(ascending=True)
+        if 'Kỳ' in df.columns:
+            df['time'] = df.apply(lambda row: quarter_to_date(row, 'Năm', 'Kỳ'), axis=1)
+            df = df.dropna(subset=['time'])
+            df.set_index('time', inplace=True)
+            df.drop(columns=['Năm', 'Kỳ', 'CP'], inplace=True, errors='ignore')
         else:
-            print(f"Warning: {key} does not have 'Năm' column. Skipping.")
+            df['time'] = df.apply(lambda row: year_to_date(row, 'Năm'), axis=1)
+            df = df.dropna(subset=['time'])
+            df.set_index('time', inplace=True)
+            df.drop(columns=['Năm', 'CP'], inplace=True, errors='ignore')
+
+        df.columns = [f"{key}_{col}" for col in df.columns]
+        processed_dfs[key] = df.sort_index(ascending=True)
+
 
     if processed_dfs:
         financial_df = pd.concat(processed_dfs.values(), axis=1)
     else:
         financial_df = pd.DataFrame()
-        print("Warning: No financial data processed.")
+        logging.warning("Warning: No financial data processed.")
 
     return financial_df

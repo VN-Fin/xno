@@ -100,9 +100,11 @@ class StrategyRunner(ABC):
 
     def __setup__(self):
         # Add default Close field for the main symbol with ticker suffix
-        default_field_id = f"Close_{self.symbol}"
-        default_field = FieldInfo(field_id=default_field_id, field_name="Close", ticker=self.symbol)
-        self.data_fields[default_field_id] = default_field
+        self.data_fields["Open"] = FieldInfo(field_id="Open", field_name="Open", ticker=self.symbol)
+        self.data_fields["High"] = FieldInfo(field_id="High", field_name="High", ticker=self.symbol)
+        self.data_fields["Low"] = FieldInfo(field_id="Low", field_name="Low", ticker=self.symbol)
+        self.data_fields["Close"] = FieldInfo(field_id="Close", field_name="Close", ticker=self.symbol)
+        self.data_fields["Volume"] = FieldInfo(field_id="Volume", field_name="Volume", ticker=self.symbol)
 
     def __load_data__(self):
         """
@@ -369,23 +371,24 @@ class StrategyRunner(ABC):
         raise NotImplementedError("Subclasses should implement this method.")
 
 
-# Test class for demonstrating add_field and load_data functionality
-class TestStrategyRunner(StrategyRunner):
-    """
-    Test implementation of StrategyRunner to test add_field and load_data
-    """
-    def __generate_signal__(self) -> List[float]:
-        # Simple test signal: return zeros (Hold)
-        return [0.0] * len(self.datas)
-
-    def __step__(self, time_idx: int):
-        # Simple test step: do nothing
-        pass
-
-
 if __name__ == "__main__":
-    from xno.data import fields
+    from xno.data import Fields
     from xno.trade import AllowedTradeMode
+
+
+    # Test class for demonstrating add_field and load_data functionality
+    class TestStrategyRunner(StrategyRunner):
+        """
+        Test implementation of StrategyRunner to test add_field and load_data
+        """
+
+        def __generate_signal__(self) -> List[float]:
+            # Simple test signal: return zeros (Hold)
+            return [0.0] * len(self.datas)
+
+        def __step__(self, time_idx: int):
+            # Simple test step: do nothing
+            pass
 
 
     # Create a mock config class for testing
@@ -412,31 +415,31 @@ if __name__ == "__main__":
 
         runner.add_field(
             field_id="income_statement_Lợi nhuận thuần_SSI",
-            field_name=fields.IncomeStatement.LOI_NHUAN_THUAN,
+            field_name=Fields.IncomeStatement.LOI_NHUAN_THUAN,
             ticker="SSI"
         )
 
         runner.add_field(
             field_id="ratio_P/E_SSI",
-            field_name=fields.Ratio.P_E,
+            field_name=Fields.Ratio.P_E,
             ticker="SSI"
         )
 
         runner.add_field(
             field_id="ratio_ROE_SSI",
-            field_name=fields.Ratio.ROE_PERCENT,
+            field_name=Fields.Ratio.ROE_PERCENT,
             ticker="SSI"
         )
 
         runner.add_field(
             field_id="income_statement_Lợi nhuận thuần_ACB",
-            field_name=fields.IncomeStatement.LOI_NHUAN_THUAN,
+            field_name=Fields.IncomeStatement.LOI_NHUAN_THUAN,
             ticker="ACB"
         )
 
         runner.add_field(
             field_id="ratio_P/E_ACB",
-            field_name=fields.Ratio.P_E,
+            field_name=Fields.Ratio.P_E,
             ticker="ACB"
         )
 

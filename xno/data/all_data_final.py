@@ -1,8 +1,10 @@
 import pandas as pd
 from xno.data.ohlcv import OhlcvDataManager
-from xno.data import fields
+from xno.data import Fields
 from xno.data.financeData import get_financial_data
 from typing import Literal
+
+from xno.utils.dc import timing
 
 
 class AllData:
@@ -15,7 +17,7 @@ class AllData:
     def add_field(self, field_name: str) -> 'AllData':
         self.fields.add(field_name)
 
-        ohlcv_values = [f.value for f in fields.OHLCV]
+        ohlcv_values = [f.value for f in Fields.OHLCV]
         if field_name in ohlcv_values:
             self.ohlcv_fields.add(field_name)
         else:
@@ -23,6 +25,7 @@ class AllData:
 
         return self
 
+    @timing
     def get(self, resolution: str, symbol: str, period: Literal['quarter', 'year'] = 'quarter') -> pd.DataFrame:
         OhlcvDataManager.stats()
         ohlcv_df = OhlcvDataManager.get(resolution, symbol, factor=1000)
@@ -64,35 +67,36 @@ class AllData:
         return result_df
 
 if __name__ == "__main__":
-    OhlcvDataManager.consume_realtime()
+    import logging
+    # OhlcvDataManager.consume_realtime()
 
     # Test with OHLCV + Financial fields
-    print("=== Test 1: OHLCV + Financial fields ===")
+    logging.info("=== Test 1: OHLCV + Financial fields ===")
     all_data = AllData() \
-        .add_field(fields.OHLCV.OPEN) \
-        .add_field(fields.OHLCV.HIGH) \
-        .add_field(fields.OHLCV.LOW) \
-        .add_field(fields.OHLCV.VOLUME) \
-        .add_field(fields.IncomeStatement.CHI_PHI_TAI_CHINH) \
-        .add_field(fields.BalanceSheet.DAU_TU_DAI_HAN_DONG) \
-        .add_field(fields.Ratio.P_E)
+        .add_field(Fields.OHLCV.OPEN) \
+        .add_field(Fields.OHLCV.HIGH) \
+        .add_field(Fields.OHLCV.LOW) \
+        .add_field(Fields.OHLCV.VOLUME) \
+        .add_field(Fields.IncomeStatement.CHI_PHI_TAI_CHINH) \
+        .add_field(Fields.BalanceSheet.DAU_TU_DAI_HAN_DONG) \
+        .add_field(Fields.Ratio.P_E)
 
     re = all_data.get(resolution="D", symbol="SSI", period="quarter")
     print(re[-5:].to_string(index=True, header=True, justify='left'))
     print(f"\nColumns: {list(re.columns)}")
 
     # Test default behavior (no fields added - should return Close only)
-    print("\n=== Test 2: Default (Close always included) ===")
+    logging.info("\n=== Test 2: Default (Close always included) ===")
     all_data_default = AllData()
     re_default = all_data_default.get(resolution="D", symbol="SSI", period="quarter")
     print(re_default[-5:].to_string(index=True, header=True, justify='left'))
     print(f"\nColumns: {list(re_default.columns)}")
 
     # Test only financial fields (should include Close + financial fields)
-    print("\n=== Test 3: Only Financial fields (Close always included) ===")
+    logging.info("\n=== Test 3: Only Financial fields (Close always included) ===")
     all_data_finance = AllData() \
-        .add_field(fields.IncomeStatement.CHI_PHI_TAI_CHINH) \
-        .add_field(fields.Ratio.P_E)
+        .add_field(Fields.IncomeStatement.CHI_PHI_TAI_CHINH) \
+        .add_field(Fields.Ratio.P_E)
     re_finance = all_data_finance.get(resolution="D", symbol="SSI", period="quarter")
     print(re_finance[-5:].to_string(index=True, header=True, justify='left'))
     print(f"\nColumns: {list(re_finance.columns)}")

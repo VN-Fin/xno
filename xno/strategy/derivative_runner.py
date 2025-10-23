@@ -12,6 +12,14 @@ from xno.utils.stock import round_to_lot
 
 class DerivativeRunner(StrategyRunner):
     _lot_size = 1  # Derivatives typically trade in units of 1 contract
+    def __init__(
+            self,
+            strategy_id: str,
+            mode: AllowedTradeMode | int,
+            re_run: bool = False,
+    ):
+        super().__init__(strategy_id, mode, re_run)
+        self.max_contracts = self.init_cash // 25_000_000  # Fixed for derivatives
 
     @abstractmethod
     def __generate_signal__(self) -> List[float]:
@@ -25,7 +33,7 @@ class DerivativeRunner(StrategyRunner):
         1. Supports long and short positions.
         2. Can buy or sell at any time (intraday).
         3. Position changes directly based on signal delta.
-        4. Position size = current_weight * (init_cash / current_price).
+        4. Position size = current_weight * max_contracts
         """
         self.current_state.current_action = AllowedAction.Hold
         current_price = self.ht_prices[time_idx]
@@ -35,9 +43,6 @@ class DerivativeRunner(StrategyRunner):
 
         # Raw signal at this timestep
         sig: float = self.signals[time_idx]
-
-        # Compute max contracts based on cash and price
-        current_max_contracts = round_to_lot(self.init_cash // current_price, self._lot_size)
 
         # Compute how much to adjust current position weight
         updated_weight = sig - self.current_state.current_weight
@@ -50,14 +55,14 @@ class DerivativeRunner(StrategyRunner):
             # Buy / Increase long position (or reduce short)
             logging.debug(f"[{current_time}] Buy logic triggered: signal={sig:.2f}")
             self.current_state.current_weight += updated_weight
-            current_trade_size = round_to_lot(updated_weight * current_max_contracts, self._lot_size)
+            current_trade_size = round_to_lot(updated_weight * self.max_contracts, self._lot_size)
             self.current_state.current_position += current_trade_size
             self.current_state.current_action = AllowedAction.Buy
         elif updated_weight < 0:
             # Sell / Increase short position (or reduce long)
             logging.debug(f"[{current_time}] Sell logic triggered: signal={sig:.2f}")
             self.current_state.current_weight += updated_weight
-            current_trade_size = round_to_lot(updated_weight * current_max_contracts, self._lot_size)  # Negative = short
+            current_trade_size = round_to_lot(updated_weight * self.max_contracts, self._lot_size)  # Negative = short
             self.current_state.current_position += current_trade_size
             self.current_state.current_action = AllowedAction.Sell
 

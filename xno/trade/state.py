@@ -4,13 +4,11 @@ import numpy as np
 import pandas as pd
 from pydantic import BaseModel, field_serializer
 
+from xno.basic_type import NumericType, DateTimeType, BooleanType
 from xno.trade.tp import (
     ActionType,
     TradeModeType,
-    DateTimeType,
     EngineType,
-    NumericType,
-    BooleanType,
     SymbolType,
     AllowedSymbolType,
     AllowedAction,

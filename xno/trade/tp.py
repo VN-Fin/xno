@@ -1,9 +1,5 @@
 from enum import Enum
-import datetime
 from typing import List
-
-import numpy as np
-import pandas as pd
 
 
 class AllowedTradeMode(int, Enum):
@@ -37,7 +33,3 @@ ActionType = AllowedAction | str
 TradeModeType = AllowedTradeMode | int
 EngineType = AllowedEngine | str
 SymbolType = AllowedSymbolType | str
-# Basic Types
-DateTimeType = str | datetime.datetime | pd.Timestamp | np.datetime64
-NumericType = np.number | float | int | np.float64 | np.int64
-BooleanType = bool | np.bool

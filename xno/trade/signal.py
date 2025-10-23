@@ -1,11 +1,8 @@
-import logging
-
 from pydantic import field_serializer, BaseModel
 
+from xno.basic_type import DateTimeType, NumericType
 from xno.trade.tp import (
     SymbolType,
-    DateTimeType,
-    NumericType,
     ActionType,
     EngineType,
     AllowedAction,

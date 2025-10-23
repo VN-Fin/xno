@@ -18,8 +18,8 @@ import logging
 import xno.utils.keys as ukeys
 import numpy as np
 
-from xno.utils.datas import load_data
 from xno.utils.stream import delivery_report
+from xno.data.all_data_final import AllData
 import threading
 
 
@@ -90,9 +90,6 @@ class StrategyRunner(ABC):
         :param field_name:
         :return:
         """
-        if field_id == "Close":
-            logging.debug("Field 'Close' is always included; skip adding again.")
-            return self
         # Add field info if not exists or override existing
         self.data_fields[field_id] = FieldInfo(
             field_id=field_id,
@@ -102,17 +99,75 @@ class StrategyRunner(ABC):
         return self
 
     def __setup__(self):
-        default_field = FieldInfo(field_id="Close", field_name="Close", ticker=self.symbol)
-        self.data_fields["Close"] = default_field
+        # Add default Close field for the main symbol with ticker suffix
+        default_field_id = f"Close_{self.symbol}"
+        default_field = FieldInfo(field_id=default_field_id, field_name="Close", ticker=self.symbol)
+        self.data_fields[default_field_id] = default_field
 
     def __load_data__(self):
-        # TODO: Load additional fields
-        self.datas = load_data(
-            resolution=self.timeframe,
-            symbol=self.symbol,
-            start=self.run_from,
-            factor=1000,
-        )
+        """
+        Load data for all added fields using AllData.
+        Groups fields by ticker and loads data for each ticker separately.
+        Then merges all data into a single DataFrame with renamed columns.
+        """
+        # Group fields by ticker
+        ticker_fields: Dict[str, List[FieldInfo]] = {}
+        for field_id, field_info in self.data_fields.items():
+            ticker = field_info.ticker
+            if ticker not in ticker_fields:
+                ticker_fields[ticker] = []
+            ticker_fields[ticker].append(field_info)
+
+        # Load data for each ticker
+        all_dataframes = []
+
+        for ticker, fields in ticker_fields.items():
+            # Create AllData instance and add all fields for this ticker
+            all_data = AllData()
+
+            for field_info in fields:
+                all_data.add_field(field_info.field_name)
+
+            # Load data for this ticker
+            try:
+                ticker_df = all_data.get(
+                    resolution=self.timeframe,
+                    symbol=ticker,
+                    period='quarter'
+                )
+
+                # Rename columns to include field_id
+                # For each field, find the corresponding field_id and rename the column
+                rename_map = {}
+                for field_info in fields:
+                    # The column name in ticker_df is field_name (e.g., "Close" or "income_statement_Lợi nhuận thuần")
+                    if field_info.field_name in ticker_df.columns:
+                        rename_map[field_info.field_name] = field_info.field_id
+
+                ticker_df = ticker_df.rename(columns=rename_map)
+                all_dataframes.append(ticker_df)
+
+                logging.info(f"Loaded {len(ticker_df)} rows for ticker={ticker} with fields: {list(rename_map.values())}")
+            except Exception as e:
+                logging.error(f"Failed to load data for ticker={ticker}: {e}")
+                raise
+
+        # Merge all dataframes on index (time)
+        if len(all_dataframes) == 0:
+            raise RuntimeError(f"No data loaded for any ticker")
+
+        # Start with the first dataframe
+        self.datas = all_dataframes[0]
+
+        # Join with remaining dataframes
+        for df in all_dataframes[1:]:
+            self.datas = self.datas.join(df, how='outer', rsuffix='_dup')
+
+        # Filter data by run_from if specified
+        if self.run_from:
+            self.datas = self.datas[self.datas.index >= self.run_from]
+
+        logging.info(f"Total loaded data shape: {self.datas.shape}, columns: {list(self.datas.columns)}")
 
     @abstractmethod
     def __generate_signal__(self) -> List[float]:
@@ -250,7 +305,12 @@ class StrategyRunner(ABC):
         if len(self.datas) == 0:
             raise RuntimeError(f"No data loaded for symbol={self.symbol} from {self.run_from}")
 
-        self.ht_prices = self.datas['Close'].tolist()
+        # Use Close field with ticker suffix (e.g., Close_SSI)
+        close_field_id = f"Close_{self.symbol}"
+        if close_field_id not in self.datas.columns:
+            raise RuntimeError(f"Close field '{close_field_id}' not found in loaded data. Available columns: {list(self.datas.columns)}")
+
+        self.ht_prices = self.datas[close_field_id].tolist()
         self.ht_times = self.datas.index.tolist()
         # init the current state
         self.current_state = StrategyState(
@@ -307,3 +367,89 @@ class StrategyRunner(ABC):
         :return:
         """
         raise NotImplementedError("Subclasses should implement this method.")
+
+
+# Test class for demonstrating add_field and load_data functionality
+class TestStrategyRunner(StrategyRunner):
+    """
+    Test implementation of StrategyRunner to test add_field and load_data
+    """
+    def __generate_signal__(self) -> List[float]:
+        # Simple test signal: return zeros (Hold)
+        return [0.0] * len(self.datas)
+
+    def __step__(self, time_idx: int):
+        # Simple test step: do nothing
+        pass
+
+
+if __name__ == "__main__":
+    from xno.data import fields
+    from xno.trade import AllowedTradeMode
+
+
+    # Create a mock config class for testing
+    class MockConfig:
+        def __init__(self):
+            self.run_from = "2023-01-01"
+            self.run_to = "2024-12-31"
+            self.symbol = "SSI"
+            self.timeframe = "D"
+            self.init_cash = 1000000000
+            self.engine = "test"
+            self.symbol_type = "stock"
+
+    # Mock the config loader
+    original_get_config = StrategyConfigLoader.get_config
+    StrategyConfigLoader.get_config = lambda strategy_id, mode: MockConfig()
+
+    try:
+        runner = TestStrategyRunner(
+            strategy_id="test_strategy",
+            mode=AllowedTradeMode.BackTrade,
+            re_run=False
+        )
+
+        runner.add_field(
+            field_id="income_statement_Lợi nhuận thuần_SSI",
+            field_name=fields.IncomeStatement.LOI_NHUAN_THUAN,
+            ticker="SSI"
+        )
+
+        runner.add_field(
+            field_id="ratio_P/E_SSI",
+            field_name=fields.Ratio.P_E,
+            ticker="SSI"
+        )
+
+        runner.add_field(
+            field_id="ratio_ROE_SSI",
+            field_name=fields.Ratio.ROE_PERCENT,
+            ticker="SSI"
+        )
+
+        runner.add_field(
+            field_id="income_statement_Lợi nhuận thuần_ACB",
+            field_name=fields.IncomeStatement.LOI_NHUAN_THUAN,
+            ticker="ACB"
+        )
+
+        runner.add_field(
+            field_id="ratio_P/E_ACB",
+            field_name=fields.Ratio.P_E,
+            ticker="ACB"
+        )
+
+        runner.add_field(
+            field_id="Close_ACB",
+            field_name="Close",
+            ticker="ACB"
+        )
+        runner.__setup__()
+        runner.__load_data__()
+        print(runner.datas.tail(3).to_string())
+
+    except Exception as e:
+        print(f"\nERROR: {e}")
+        import traceback
+        traceback.print_exc()

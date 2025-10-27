@@ -22,7 +22,7 @@ class StrategyVisualizer:
         Build dataframe for visualization with all required columns.
         
         Returns:
-            DataFrame with columns: cum_ret, bm_cum_ret, price, action, equity, amount, fee
+            DataFrame with columns for backtest visualization
         """
         # Ensure returns are calculated
         returns = self._calculator.calculate_returns()
@@ -30,32 +30,61 @@ class StrategyVisualizer:
         # Build visualization dataframe from states_df
         df = self._calculator.states_df.copy()
         
-        # Calculate cumulative returns from equity curve
+        # Get basic data
         equity_curve = self._calculator.equity_curve
-        cum_ret = (equity_curve - equity_curve[0]) / equity_curve[0]
+        prices = self._calculator.prices
+        trade_sizes = self._calculator.trade_sizes
+        fees = self._calculator.fees
+        init_cash = self._calculator.init_cash
+        
+        # === Calculate step_ret (periodic return) ===
+        # step_ret[t] = (equity[t] - equity[t-1]) / equity[t-1]
+        step_ret = np.zeros_like(equity_curve, dtype=np.float64)
+        step_ret[1:] = (equity_curve[1:] - equity_curve[:-1]) / equity_curve[:-1]
+        df['step_ret'] = step_ret
+        
+        # === Calculate cum_ret (cumulative return - compound) ===
+        # cum_ret[t] = ∏(1 + step_ret[i]) - 1
+        cum_ret = np.cumprod(1 + step_ret) - 1
         df['cum_ret'] = cum_ret
         
-        # Calculate benchmark cumulative return (simple buy and hold from price changes)
-        # Benchmark is the buy-and-hold return from the first price to current price
-        prices = self._calculator.prices
+        # === Calculate bm_equity (benchmark equity) ===
+        # bm_equity = (init_cash / init_price) × current_price
         first_price = float(prices[0])
-        bm_cum_ret = (prices - first_price) / first_price
+        bm_equity = (init_cash / first_price) * prices
+        df['bm_equity'] = bm_equity
+        
+        # === Calculate bm_step_ret ===
+        # bm_step_ret[t] = (bm_equity[t] - bm_equity[t-1]) / bm_equity[t-1]
+        bm_step_ret = np.zeros_like(bm_equity, dtype=np.float64)
+        bm_step_ret[1:] = (bm_equity[1:] - bm_equity[:-1]) / bm_equity[:-1]
+        df['bm_step_ret'] = bm_step_ret
+        
+        # === Calculate bm_cum_ret (cumulative return - compound) ===
+        # bm_cum_ret[t] = ∏(1 + bm_step_ret[i]) - 1
+        bm_cum_ret = np.cumprod(1 + bm_step_ret) - 1
         df['bm_cum_ret'] = bm_cum_ret
         
         # Price column
         df['price'] = prices
         
-        # Action column - AllowedAction is already string enum (B/S/H)
-        df['action'] = df['current_action'].apply(lambda x: str(x) if x is not None else 'H')
+        # Action column - Extract value from AllowedAction enum (B/S/H)
+        df['action'] = df['current_action'].apply(lambda x: x.value if hasattr(x, 'value') else str(x) if x is not None else 'H')
         
         # Equity column from equity curve
         df['equity'] = equity_curve
         
         # Amount column from trade_sizes
-        df['amount'] = self._calculator.trade_sizes
+        df['amount'] = trade_sizes
         
         # Fee column from fees array
-        df['fee'] = self._calculator.fees
+        df['fee'] = fees
+        
+        # Value column: amount × price
+        df['value'] = trade_sizes * prices
+        
+        # Signal column: Use current_weight as signal
+        df['signal'] = df['current_weight']
         
         # Set index to candle time
         if 'candle' in df.columns:

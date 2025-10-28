@@ -6,6 +6,6 @@ import numpy as np
 
 
 # Basic Types
-DateTimeType = str | datetime.datetime | np.datetime64
+DateTimeType = str | datetime.datetime
 NumericType = float | int
 BooleanType = bool 

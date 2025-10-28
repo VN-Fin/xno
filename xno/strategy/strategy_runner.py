@@ -42,7 +42,9 @@ class StrategyRunner(ABC):
             strategy_id: str,
             mode: AllowedTradeMode | int,
             re_run: bool = False,
+            send_data: bool = True,
     ):
+        self.send_data = send_data
         self.producer = get_producer()
         self.redis_latest_signal_key = ukeys.generate_latest_signal_key(mode)
         self.redis_latest_state_key = ukeys.generate_latest_state_key(mode)
@@ -307,12 +309,7 @@ class StrategyRunner(ABC):
         if len(self.datas) == 0:
             raise RuntimeError(f"No data loaded for symbol={self.symbol} from {self.run_from}")
 
-        # Use Close field with ticker suffix (e.g., Close_SSI)
-        close_field_id = f"Close_{self.symbol}"
-        if close_field_id not in self.datas.columns:
-            raise RuntimeError(f"Close field '{close_field_id}' not found in loaded data. Available columns: {list(self.datas.columns)}")
-
-        self.ht_prices = self.datas[close_field_id].tolist()
+        self.ht_prices = self.datas["Close"].tolist()
         self.ht_times = self.datas.index.tolist()
         # init the current state
         self.current_state = StrategyState(
@@ -352,7 +349,11 @@ class StrategyRunner(ABC):
         for time_idx in range(len(self.signals)):
             self.__step__(time_idx)
         # Done, send to Kafka or save to DB
-        self.__done__()
+        if self.send_data:
+            logging.info("Finalizing strategy run and sending data...")
+            self.__done__()
+        else:
+            logging.info("Data sending disabled, skipping finalization.")
 
     def stats(self):
         return {
@@ -410,7 +411,8 @@ if __name__ == "__main__":
         runner = TestStrategyRunner(
             strategy_id="test_strategy",
             mode=AllowedTradeMode.BackTrade,
-            re_run=False
+            re_run=False,
+            send_data=False,
         )
 
         runner.add_field(
@@ -444,7 +446,7 @@ if __name__ == "__main__":
         )
 
         runner.add_field(
-            field_id="Close_ACB",
+            field_id="Close",
             field_name="Close",
             ticker="ACB"
         )

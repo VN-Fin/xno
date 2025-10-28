@@ -1,3 +1,4 @@
+from xno import settings
 from xno.basic_type import NumericType
 import numpy as np
 import pandas as pd
@@ -24,7 +25,7 @@ class BacktestCalculator:
         
         # Set default fee rate based on symbol type
         if fee_rate is None:
-            self.fee_rate = 0.0015 if self.symbol_type == AllowedSymbolType.Stock else 20_000
+            self.fee_rate = settings.trading_fee.percent_stock_fee if self.symbol_type == AllowedSymbolType.Stock else settings.trading_fee.fixed_derivative_fee
         else:
             self.fee_rate = fee_rate
             

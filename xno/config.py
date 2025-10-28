@@ -3,6 +3,11 @@ from urllib.parse import quote_plus
 import logging
 
 
+class FeeConfig:
+    percent_stock_fee = 0.0015  # 0.15% per trade
+    fixed_derivative_fee = 20000  # VND 20,000 per trade
+
+
 class AppConfig:
     # Postgresql config
     postgresql_host: str = os.environ.get('POSTGRES_HOST', 'localhost')
@@ -49,6 +54,8 @@ class AppConfig:
     # Redis hash key config
     redis_signal_latest_hash: str = kafka_signal_latest_topic
     redis_state_latest_hash: str = kafka_state_latest_topic
+    # Fee config
+    trading_fee = FeeConfig()
 
 
 settings = AppConfig()

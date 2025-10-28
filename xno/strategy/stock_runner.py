@@ -126,6 +126,7 @@ if __name__ == "__main__":
         strategy_id="fad40f3b-52a7-44d1-99cb-8d4b5aa257c5",
         mode=AllowedTradeMode.LiveTrade,
         re_run=False,
+        send_data=False
     )
     runner.add_field(
         "Volume", "Volume"

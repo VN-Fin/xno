@@ -4,8 +4,8 @@ from xno.trade.cfg import StrategyConfigLoader, StrategyConfig, AdvancedConfig
 from xno.trade.tp import (
     AllowedAction,
     AllowedTradeMode,
-    # DateTimeType,
     SymbolType,
+    # DateTimeType,
     # BooleanType,
     # NumericType,
     EngineType,
@@ -14,4 +14,5 @@ from xno.trade.tp import (
     TradeModeType,
     AllowedSymbolType
 )
+from xno.basic_type import DateTimeType, BooleanType, NumericType
 from xno.trade.fields import FieldInfo

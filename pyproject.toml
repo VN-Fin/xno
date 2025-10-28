@@ -6,7 +6,10 @@ requires-python = ">=3.13"
 dependencies = [
     "cachetools>=6.2.1",
     "confluent-kafka>=2.11.1",
+    "dotenv>=0.9.9",
+    "ipython>=9.6.0",
     "pandas>=2.3.2",
+    "plotly>=6.3.1",
     "psycopg2-binary>=2.9.10",
     "pydantic>=2.12.3",
     "quantstats>=0.0.77",

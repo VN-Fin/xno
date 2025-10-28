@@ -1,42 +1,97 @@
-from xno.basic_type import NumericType
 import numpy as np
 import pandas as pd
 
 
-def get_returns(
-        init_cash: NumericType,
+def get_returns_stock(
+        init_cash,
         times,
         prices,
-        target_sizes
+        positions,
+        trade_sizes,
+        fee_rate=0.0015  # 0.15%
 ) -> pd.Series:
-    """
-    Calculate step returns based on target sizes and prices.
-    init cash: 500,
-    09:00 - 500m  1  1950 ->                   = 0%
-    09:01 - 505m  0  1955 -> (505 - 500) / 500 = 1%
-    09:02 - 510m  0  1960 -> (510 - 505) / 505 = 0.990099%
-    09:03 - 500m  0  1950 -> (500 - 510) / 510 = -1.960784%
-    """
-    # Validation
-    if len(prices) != len(target_sizes):
-        raise ValueError("Prices and target sizes must have the same length.")
-    if len(prices) != len(times):
-        raise ValueError("Times, prices, and target_sizes must have the same length.")
 
-    # Convert to numpy arrays
+    # --- Validate input lengths ---
+    if not (len(times) == len(prices) == len(positions) == len(trade_sizes)):
+        raise ValueError("times, prices, positions, and trade_sizes must have the same length.")
+
+    # --- Convert to numpy arrays ---
     prices = np.asarray(prices, dtype=np.float64)
-    target_sizes = np.asarray(target_sizes, dtype=np.float64)
+    positions = np.asarray(positions, dtype=np.float64)
+    trade_sizes = np.asarray(trade_sizes, dtype=np.float64)
+    positions = positions - trade_sizes
 
-    # Compute portfolio value each step
-    # Equity = cash + position_value
-    # We assume full allocation to target position each step
-    position_value = target_sizes * prices
-    equity_curve = init_cash * (position_value / position_value[0])
+    # --- Compute trading fees (only when trade occurs) ---
+    fees = np.abs(trade_sizes) * prices * fee_rate
 
-    # Compute step returns (percentage change)
-    returns = np.zeros_like(prices, dtype=np.float64)
-    equity_prev = np.maximum(equity_curve[:-1], 1e-12)  # avoid div/0
-    returns[1:] = (equity_curve[1:] - equity_curve[:-1]) / equity_prev
+    # --- Compute daily price changes ---
+    price_diff = np.diff(prices, prepend=prices[0])
 
-    # Return as Pandas Series
-    return pd.Series(returns, index=times, name="returns")
+    # --- Daily PnL: position * price change ---
+    pnl = positions * price_diff
+
+    # --- Cumulative values ---
+    pnl_cum = np.cumsum(pnl)
+    fees_cum = np.cumsum(fees)
+
+    # --- Compute equity: init cash + total pnl - total fees ---
+    equity = init_cash + pnl_cum - fees_cum
+
+    # --- Step returns ---
+    returns = np.zeros_like(equity)
+    returns[1:] = (equity[1:] - equity[:-1]) / equity[:-1]
+
+    # --- Create result Series with metadata ---
+    result = pd.Series(returns, index=pd.Index(times, name="time"), name="return")
+    result.attrs['pnl'] = pnl
+    result.attrs['fees'] = fees
+    result.attrs['equity_curve'] = equity
+
+    return result
+
+
+def get_returns_derivative(
+        init_cash,
+        times,
+        prices,
+        positions,
+        trade_sizes,
+        fee_rate=20_000 
+) -> pd.Series:
+    # --- Validate input lengths ---
+    if not (len(times) == len(prices) == len(positions) == len(trade_sizes)):
+        raise ValueError("times, prices, positions, and trade_sizes must have the same length.")
+
+    # --- Convert to numpy arrays ---
+    prices = np.asarray(prices, dtype=np.float64)
+    positions = np.asarray(positions, dtype=np.float64)
+    trade_sizes = np.asarray(trade_sizes, dtype=np.float64)
+    positions = positions - trade_sizes
+
+    # --- Compute trading fees (20 000 VND mỗi hợp đồng) ---
+    fees = np.abs(trade_sizes) * fee_rate
+
+    # --- Compute daily price changes ---
+    price_diff = np.diff(prices, prepend=prices[0])
+
+    # --- Daily PnL: mỗi điểm = 100 000 VND ---
+    pnl = positions * price_diff * 100_000
+
+    # --- Cumulative values ---
+    pnl_cum = np.cumsum(pnl)
+    fees_cum = np.cumsum(fees)
+
+    # --- Compute equity: init cash + total pnl - total fees ---
+    equity = init_cash + pnl_cum - fees_cum
+
+    # --- Step returns ---
+    returns = np.zeros_like(equity)
+    returns[1:] = (equity[1:] - equity[:-1]) / equity[:-1]
+
+    # --- Create result Series with metadata ---
+    result = pd.Series(returns, index=pd.Index(times, name="time"), name="return")
+    result.attrs['pnl'] = pnl
+    result.attrs['fees'] = fees
+    result.attrs['equity_curve'] = equity
+
+    return result

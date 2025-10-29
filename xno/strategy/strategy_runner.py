@@ -41,9 +41,16 @@ class StrategyRunner(ABC):
             self,
             strategy_id: str,
             mode: AllowedTradeMode | int,
-            re_run: bool = False,
-            send_data: bool = True,
+            re_run: bool,
+            send_data: bool,
     ):
+        """
+        Initialize the StrategyRunner.
+        :param strategy_id:
+        :param mode:
+        :param re_run: re-run or continue from last checkpoint. If re-run, all data will be sent again.
+        :param send_data: whether to send data to Kafka/Redis
+        """
         self.send_data = send_data
         self.producer = get_producer()
         self.redis_latest_signal_key = ukeys.generate_latest_signal_key(mode)
@@ -272,26 +279,31 @@ class StrategyRunner(ABC):
             logging.info(f"No new records to send for strategy_id={self.strategy_id}")
             return
         # Send signal [Optional]
-        if self.current_state.bt_mode == AllowedTradeMode.LiveTrade:
-            self.__send_signal__()
-
+        if self.send_data:
+            if self.current_state.bt_mode == AllowedTradeMode.LiveTrade:
+                self.__send_signal__()
+        else:
+            logging.info(f"send_data is False, skipping sending latest signal for strategy_id={self.strategy_id}")
         # And send to Kafka
         send_states = self.trading_states[send_from_cp:]
         if len(send_states) == 0:
             logging.warning(f"No new records to send for strategy_id={self.strategy_id}")
             return
-        logging.info(f"Sending {len(send_states)} trading state records for strategy_id={self.strategy_id}")
-        for record in self.trading_states[send_from_cp:]:
-            record_str = record.to_json_str()
-            self.producer.produce(
-                self.kafka_history_state_topic,
-                key=self.strategy_id,
-                value=record_str,
-                callback=delivery_report
-            )
-        # Send latest state (current state)
-        self.__send_state__()
-        self.producer.flush()
+        if self.send_data:
+            logging.info(f"Sending {len(send_states)} trading state records for strategy_id={self.strategy_id}. CP = {send_from_cp}")
+            for record in self.trading_states[send_from_cp:]:
+                record_str = record.to_json_str()
+                self.producer.produce(
+                    self.kafka_history_state_topic,
+                    key=self.strategy_id,
+                    value=record_str,
+                    callback=delivery_report
+                )
+            # Send latest state (current state)
+            self.__send_state__()
+            self.producer.flush()
+        else:
+            logging.info(f"send_data is False, skipping sending trading states for strategy_id={self.strategy_id}. CP = {send_from_cp}")
 
     def run(self):
         # Setup fields
@@ -300,7 +312,7 @@ class StrategyRunner(ABC):
         self.producer.produce(
             "ping",
             key="run_strategy",
-            value=f"Run strategy {self.strategy_id}",
+            value=f"Run strategy {self.strategy_id}. Ru-run={self.re_run}",
             callback=delivery_report
         )
         self.producer.flush() # Ensure ping is sent before proceeding
@@ -348,12 +360,9 @@ class StrategyRunner(ABC):
         # Step through each signal (buy/sell/hold) and simulate trading
         for time_idx in range(len(self.signals)):
             self.__step__(time_idx)
-        # Done, send to Kafka or save to DB
-        if self.send_data:
-            logging.info("Finalizing strategy run and sending data...")
-            self.__done__()
-        else:
-            logging.info("Data sending disabled, skipping finalization.")
+
+        logging.debug(f"Finalizing strategy run and sending data for strategy_id={self.strategy_id}")
+        self.__done__()
 
     def stats(self):
         return {

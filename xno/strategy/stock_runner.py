@@ -123,9 +123,9 @@ if __name__ == "__main__":
 
     # Example usage
     runner = CustomStockRunner(
-        strategy_id="fad40f3b-52a7-44d1-99cb-8d4b5aa257c5",
+        strategy_id="3678555cc9223946a6e40d38be4cc89f",
         mode=AllowedTradeMode.LiveTrade,
-        re_run=False,
+        re_run=True,
         send_data=False
     )
     runner.add_field(

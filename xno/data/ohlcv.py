@@ -17,11 +17,21 @@ from sqlalchemy import text
 import datetime, random
 
 _accepted_resolutions = {"h", "D", "m"}
+_map_db_accept_resolutions = {
+    "h": "HOUR1",
+    "D": "DAY",
+    "m": "MIN"
+}
+_map_accept_db_resolutions = {
+    "HOUR1": "h",
+    "DAY": "D",
+    "MIN": "m"
+}
 # Data type, "OH" stands for Open-High-Low-Close-Volume
 _accepted_data_type = "OH"
 _accepted_data_source = "dnse"
 # Database name for OHLCV data
-_ohlcv_db = "xno_ai_data"
+_ohlcv_db = "xno_data"
 
 # Template DataFrame with predefined data types for consistency
 _ohlcv_data_template = pd.DataFrame({
@@ -36,7 +46,7 @@ _ohlcv_data_template = pd.DataFrame({
 load_chunk_size = 1000  # rows
 load_data_query = """
         SELECT time, open, high, low, close, volume
-        FROM trading.stock_ohlcv_history
+        FROM vn_market.history_stock_ohlcv
         WHERE symbol = :symbol
           AND resolution = :resolution
           AND time >= :from_time
@@ -65,13 +75,13 @@ class OhlcvData:
     def get_max_data_time(self):
         query = """
         SELECT MAX(time) as max_time
-        FROM trading.stock_ohlcv_history
+        FROM vn_market.history_stock_ohlcv
         WHERE symbol = :symbol
             AND resolution = :resolution
         """
         params = {
             "symbol": self.symbol,
-            "resolution": self.resolution,
+            "resolution": _map_db_accept_resolutions.get(self.resolution),
         }
         with DistributedSemaphore():
             with SqlSession(_ohlcv_db) as session:
@@ -87,7 +97,7 @@ class OhlcvData:
     def load_data(self, from_time: str, to_time: str):
         params = {
             "symbol": self.symbol,
-            "resolution": self.resolution,
+            "resolution": _map_db_accept_resolutions.get(self.resolution),
             "from_time": from_time,
             "to_time": to_time,
         }
@@ -334,6 +344,8 @@ class OhlcvDataManager:
             resolution = payload.get('resolution')
             if resolution not in _accepted_resolutions:
                 continue
+
+            resolution = _map_accept_db_resolutions.get(resolution)
             # Add to corresponding OhlcvData instance
             new_payload = {
                 "time": payload.get('time'),
@@ -363,11 +375,11 @@ if __name__ == "__main__":
     # )
     # OhlcvDataManager.add_symbol("HPG")  # .add_symbol("SSI").add_symbol("VND")
     # uncommented to enable real-time consumption
-    OhlcvDataManager.consume_realtime()
+    # OhlcvDataManager.consume_realtime()
 
     while True:
         time.sleep(10)
         print(OhlcvDataManager.stats())
-        datas = OhlcvDataManager.get("min", "HPG", factor=1000)
+        datas = OhlcvDataManager.get("D", "AAA", from_time="2015-01-01", factor=1000)
         print(datas)
         print(datas.dtypes)

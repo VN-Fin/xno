@@ -12,11 +12,10 @@ class AppConfig:
     # Postgresql config
     postgresql_host: str = os.environ.get('POSTGRES_HOST', 'localhost')
     postgresql_port: int = os.environ.get('POSTGRES_PORT', 5432)
-    postgresql_db: str = os.environ.get('POSTGRES_DB', 'xno')
     postgresql_user: str = os.environ.get('POSTGRES_USER', 'xno')
     postgresql_password: str = os.environ.get('POSTGRES_PASSWORD', 'xno_password')
 
-    def postgresql_url(self, db_name=postgresql_db):
+    def postgresql_url(self, db_name):
         return "postgresql://{user}:{password}@{host}:{port}/{db}".format(
             user=self.postgresql_user,
             password=quote_plus(self.postgresql_password),
@@ -51,6 +50,7 @@ class AppConfig:
     kafka_ping_topic: str = "ping"
     # Config for execution database
     execution_db_name: str = "xno_execution"
+    data_db_name: str = "xno_data"
     # Redis hash key config
     redis_signal_latest_hash: str = kafka_signal_latest_topic
     redis_state_latest_hash: str = kafka_state_latest_topic
@@ -62,7 +62,7 @@ settings = AppConfig()
 
 # Set up logging
 logging.basicConfig(
-    level=logging.INFO,
+    level=os.environ.get("LOG_LEVEL", "INFO"),
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 

@@ -36,9 +36,9 @@ class SqlSession:
                     )
                     # List all tables in the connected database
                     with engine.connect() as conn:
-                        result = conn.execute(text("SELECT table_name FROM information_schema.tables WHERE table_schema='public'"))
-                        tables = result.fetchall()
-                        print(f"Connected to DB '{self.db_name}'. Available tables: {[table[0] for table in tables]}")
+                        result = conn.execute(text("SELECT schema_name FROM information_schema.schemata"))
+                        schemas = result.fetchall()
+                        logging.debug(f"Connected to DB '{self.db_name} [{settings.postgresql_host}:{settings.postgresql_port}]'. Available schemas: {[s[0] for s in schemas]}")
         Session = scoped_session(self._sessionmakers[self.db_name])
         self._session = Session()
         return self._session
@@ -57,5 +57,5 @@ class SqlSession:
 if __name__ == "__main__":
     print("PostgreSQL session initialized.")
     with SqlSession("xno_execution") as session:
-        result = session.execute(text("SELECT * FROM public.strategy_overview LIMIT 10"))
+        result = session.execute(text("SELECT * FROM alpha.strategy_overview LIMIT 10"))
         print(result.fetchall())

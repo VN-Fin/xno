@@ -42,7 +42,7 @@ class StrategyConfigLoader:
                 live as result,
                 advanced_config as advanced_config,
                 engine as engine
-            FROM public.strategy_overview
+            FROM alpha.strategy_overview
             WHERE engine = :engine AND symbol_type = :symbol_type
             ORDER BY symbol, id
         """
@@ -100,7 +100,7 @@ class StrategyConfigLoader:
                 {column} as result,
                 advanced_config as advanced_config,
                 engine as engine
-            FROM public.strategy_overview
+            FROM alpha.strategy_overview
             WHERE id = :strategy_id AND engine = :engine
             LIMIT 1
         """
@@ -138,7 +138,7 @@ class StrategyConfigLoader:
 if __name__ == "__main__":
     # Initial load
     # Example usage
-    config = StrategyConfigLoader.get_config("fad40f3b-52a7-44d1-99cb-8d4b5aa257c5", AllowedTradeMode.BackTrade, "")
+    config = StrategyConfigLoader.get_config("1569c66133af50d05a5c45715031fcc8", AllowedTradeMode.BackTrade, "")
     print(config)
     print(config.model_dump_json())  # to string
 

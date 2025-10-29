@@ -312,7 +312,7 @@ class StrategyRunner(ABC):
         self.producer.produce(
             "ping",
             key="run_strategy",
-            value=f"Run strategy {self.strategy_id}. Ru-run={self.re_run}",
+            value=f"Run strategy {self.strategy_id}. Re-run={self.re_run}",
             callback=delivery_report
         )
         self.producer.flush() # Ensure ping is sent before proceeding
@@ -404,13 +404,13 @@ if __name__ == "__main__":
     # Create a mock config class for testing
     class MockConfig:
         def __init__(self):
-            self.run_from = "2023-01-01"
-            self.run_to = "2024-12-31"
+            self.run_from = "2015-01-01"
+            self.run_to = "2025-12-31"
             self.symbol = "SSI"
             self.timeframe = "D"
             self.init_cash = 1000000000
-            self.engine = "test"
-            self.symbol_type = "stock"
+            self.engine = "TA-Bot"
+            self.symbol_type = "S"
 
     # Mock the config loader
     original_get_config = StrategyConfigLoader.get_config

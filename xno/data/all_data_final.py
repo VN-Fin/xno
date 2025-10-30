@@ -89,6 +89,7 @@ if __name__ == "__main__":
     print(f"\nColumns: {list(re_default.columns)}")
 
     # Test only financial fields (should include Close + financial fields)
+    # Test commit 
     print("\n=== Test 3: Only Financial fields (Close always included) ===")
     all_data_finance = AllData() \
         .add_field(fields.IncomeStatement.CHI_PHI_TAI_CHINH) \

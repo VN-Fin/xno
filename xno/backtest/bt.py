@@ -72,7 +72,7 @@ class BacktestCalculator:
         self.state_history = {
             'candle': self.times,
             'prices': self.prices,
-            'actions': results.actions,
+            'actions': self.actions,
             'position': self.positions,
             'trade_sizes': self.trade_sizes,
             'returns': results.returns,

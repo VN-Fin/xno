@@ -4,7 +4,7 @@ from typing import List, Dict, Optional
 from confluent_kafka import Producer
 
 from xno import settings
-from xno.backtest import StrategyTradeSummary
+from xno.trade import StrategyTradeSummary
 from xno.connectors.rd import RedisClient
 from xno.trade import (
     AllowedTradeMode,

@@ -1,18 +1,19 @@
+import pandas as pd
+
 from xno import settings
-from xno.backtest import StrategyTradeSummary
+from xno.trade import StrategyTradeSummary
 from xno.basic_type import NumericType
 import numpy as np
-import pandas as pd
 from xno.backtest.cal.anl import get_trade_analysis_metrics
 from xno.backtest.cal.pf import get_performance_metrics
 from xno.backtest.cal.rt import get_returns_stock, get_returns_derivative
-from typing import Optional, List
+from typing import Optional
 
 from xno.trade import BacktestInput
 from xno.trade.tp import AllowedSymbolType
 
-from xno.backtest.pf import TradePerformance
-from xno.backtest.analysis import TradeAnalysis
+from xno.trade.pf import TradePerformance
+from xno.trade.analysis import TradeAnalysis
 from typing import Dict, List, Any
 
 class BacktestCalculator:
@@ -37,11 +38,13 @@ class BacktestCalculator:
         self.actions: List[str] = inp.actions
         self.bt_mode = inp.bt_mode
 
-        self.returns: pd.Series = None
+        self.returns: Optional[np.ndarray] = None
+        self.equity_curve: Optional[np.ndarray] = None
+        self.pnl: Optional[np.ndarray] = None
 
-        self.trade_analysis: TradeAnalysis = None
-        self.performance: TradePerformance = None
-        self.state_history: Dict[str, List[Any]] = None
+        self.trade_analysis: Optional[TradeAnalysis] = None
+        self.performance: Optional[TradePerformance] = None
+        self.state_history: Optional[Dict[str, List[Any]]] = None
 
     def calculate_returns(self) -> None:
         
@@ -67,10 +70,8 @@ class BacktestCalculator:
             raise RuntimeError(f"Unknown symbol type: {self.symbol_type}, do not support return calculation")
         
         self.returns = results.returns # using for performance calculation
-        
         # using for trade analysis
         self.equity_curve = results.equity_curve
-        self.fee_rate = self.fee_rate
         self.pnl = results.pnl
 
         # Build state_history as dict-of-lists
@@ -97,7 +98,7 @@ class BacktestCalculator:
             self.calculate_returns()
         if self.performance is not None:
             return self.performance
-        self.performance = get_performance_metrics(self.returns)
+        self.performance = get_performance_metrics(pd.Series(self.returns, index=pd.to_datetime(self.times)))
         return self.performance
 
     def calculate_trade_analysis(self) -> TradeAnalysis:

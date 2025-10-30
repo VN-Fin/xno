@@ -1,4 +1,4 @@
-from xno.backtest.analysis import TradeAnalysis
+from xno.trade.analysis import TradeAnalysis
 import numpy as np
 
 

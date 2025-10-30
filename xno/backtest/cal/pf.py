@@ -1,12 +1,10 @@
 import pandas as pd
 
-from xno.backtest.pf import TradePerformance
+from xno.trade.pf import TradePerformance
 import quantstats as qs
-import numpy as np
 
-def get_performance_metrics(returns: pd.Series|np.ndarray) -> TradePerformance:
-    rets = returns if isinstance(returns, pd.Series) else pd.Series(returns)
-    rets = rets.dropna()
+def get_performance_metrics(returns: pd.Series) -> TradePerformance:
+    rets = returns.dropna()
 
     # Infer frequency
     freq = pd.infer_freq(rets.index)

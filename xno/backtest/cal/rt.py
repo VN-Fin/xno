@@ -55,7 +55,7 @@ def get_returns_stock(
 
     cumret = _compound_returns(returns)
 
-    returns = pd.Series(returns, index=pd.to_datetime(times))
+    # returns = pd.Series(returns, index=pd.to_datetime(times))
 
     bm_equity = (init_cash / prices[0]) * prices
     bm_returns = np.zeros_like(bm_equity)
@@ -110,8 +110,7 @@ def get_returns_derivative(
 
     cumret = _compound_returns(returns)
 
-    returns = pd.Series(returns, index=pd.to_datetime(times))
-
+    # returns = pd.Series(returns, index=pd.to_datetime(times))
 
     bm_pnl = np.cumsum(price_diff * 100_000)
     bm_equity = init_cash + bm_pnl

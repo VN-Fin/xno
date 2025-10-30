@@ -155,7 +155,7 @@ if __name__ == "__main__":
         runner = TestStrategyRunner(
             strategy_id="test_strategy",
             mode=AllowedTradeMode.BackTrade,
-            re_run=False,
+            re_run=True,
             send_data=False,
         )
         runner.run()

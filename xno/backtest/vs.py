@@ -1,9 +1,7 @@
-from typing import Dict, List
+from typing import Dict
 import logging
 import pandas as pd
-import numpy as np
 
-from xno.backtest.pf import TradePerformance
 
 class StrategyVisualizer:
     def __init__(self, runner, name: str = None):

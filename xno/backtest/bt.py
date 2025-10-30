@@ -13,6 +13,7 @@ from xno.trade.tp import AllowedSymbolType
 
 from xno.backtest.pf import TradePerformance
 from xno.backtest.analysis import TradeAnalysis
+from typing import Dict, List, Any
 
 class BacktestCalculator:
     def __init__(self, inp: BacktestInput):
@@ -38,7 +39,11 @@ class BacktestCalculator:
 
         self.returns: np.ndarray = None
 
-    def calculate_returns(self) -> pd.Series:
+        self.trade_analysis: TradeAnalysis = None
+        self.performance: TradePerformance = None
+        self.state_history: Dict[str, List[Any]] = None
+
+    def calculate_returns(self) -> None:
         
         if self.symbol_type == AllowedSymbolType.Stock:
             results = get_returns_stock(
@@ -60,6 +65,7 @@ class BacktestCalculator:
             )
         else:
             raise RuntimeError(f"Unknown symbol type: {self.symbol_type}, do not support return calculation")
+        
         self.returns = results.returns # using for performance calculation
         
         # using for trade analysis

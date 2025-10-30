@@ -1,16 +1,13 @@
 from xno.backtest.analysis import TradeAnalysis
-import pandas as pd
 import numpy as np
-from typing import List
-from xno.trade.state import StrategyState
 
 
 def get_trade_analysis_metrics(
     equity_curve: np.ndarray,
-    trade_returns: np.ndarray | None = None,
-    fees: np.ndarray | float = 0.0,
-    trading_states: pd.DataFrame | None = None,
-    pnl: np.ndarray | None = None,
+    trade_returns: np.ndarray,
+    fees: float,
+    pnl: np.ndarray,
+    trade_sizes: np.ndarray,
 ) -> TradeAnalysis:
     
     # === 1. Portfolio-level metrics ===
@@ -21,14 +18,9 @@ def get_trade_analysis_metrics(
     total_fee = float(np.sum(fees)) if isinstance(fees, (list, np.ndarray)) else float(fees)
 
     # === 2. Trade-level statistics ===
-    if trading_states is not None:
-        states_df = pd.DataFrame(trading_states)
-        trade_sizes = states_df["trade_size"].to_numpy(dtype=float)
-        total_trades = len(trade_sizes[trade_sizes != 0])
-        total_closed_trades = len(trade_sizes[trade_sizes < 0])
-        total_open_trades = len(trade_sizes[trade_sizes > 0])
-    else:
-        total_trades = total_closed_trades = total_open_trades = 0
+    total_trades = len(trade_sizes[trade_sizes != 0])
+    total_closed_trades = len(trade_sizes[trade_sizes < 0])
+    total_open_trades = len(trade_sizes[trade_sizes > 0])
 
     # === 3. Open trade unrealized PnL ===
     open_trade_pnl = float(pnl[-1])  

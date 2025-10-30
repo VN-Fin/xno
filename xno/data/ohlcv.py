@@ -45,13 +45,13 @@ _ohlcv_data_template = pd.DataFrame({
 
 load_chunk_size = 1000  # rows
 load_data_query = """
-        SELECT time, open, high, low, close, volume
-        FROM vn_market.history_stock_ohlcv
-        WHERE symbol = :symbol
-          AND resolution = :resolution
-          AND time >= :from_time
-          AND time <= :to_time
-        """
+SELECT time, open, high, low, close, volume
+FROM vn_market.history_stock_ohlcv
+WHERE symbol = :symbol
+  AND resolution = :resolution
+  AND time >= :from_time
+  AND time <= :to_time
+"""
 
 
 class OhlcvData:

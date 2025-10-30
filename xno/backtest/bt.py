@@ -6,7 +6,7 @@ import pandas as pd
 from xno.backtest.cal.anl import get_trade_analysis_metrics
 from xno.backtest.cal.pf import get_performance_metrics
 from xno.backtest.cal.rt import get_returns_stock, get_returns_derivative
-from typing import Optional
+from typing import Optional, List
 
 from xno.trade import BacktestInput
 from xno.trade.tp import AllowedSymbolType
@@ -16,7 +16,6 @@ from xno.backtest.analysis import TradeAnalysis
 
 
 class BacktestCalculator:
-    
     def __init__(self, inp: BacktestInput):
         self.strategy_id = inp.strategy_id
         self.init_cash = inp.book_size
@@ -35,13 +34,15 @@ class BacktestCalculator:
         self.prices: np.ndarray = inp.prices
         self.positions: np.ndarray = inp.positions
         self.trade_sizes: np.ndarray = inp.trade_sizes
-        
+        self.actions: List[str] = inp.actions
+        self.bt_mode = inp.bt_mode
+
         # Calculated metrics
-        self.pnl: np.ndarray = np.array([]) # not cumsum
+        self.pnl: Optional[np.ndarray] = None
         self.equity_curve: np.ndarray = np.array([]) 
         self.fees: np.ndarray = np.array([]) # not cumsum
         self.returns: np.ndarray = np.array([]) # not cumsum
-        
+
         # Analysis results
         self.performance: Optional[TradePerformance] = None
         self.trade_analysis: Optional[TradeAnalysis] = None
@@ -110,8 +111,8 @@ class BacktestCalculator:
         self.trade_analysis = get_trade_analysis_metrics(
             equity_curve=self.equity_curve,
             trade_returns=self.returns,
-            fees=self.fees,
-            trading_states=self.states_df,
+            fees=self.fee_rate,
+            trade_sizes=self.trade_sizes,
             pnl=self.pnl,
         )
         return self.trade_analysis
@@ -129,6 +130,8 @@ class BacktestCalculator:
             to_time=self.times[-1].__str__(),
             performance=self.calculate_performance_metrics(),
             analysis=self.calculate_trade_analysis(),
+            bt_mode=self.bt_mode,
+            state_history=None
         )
     
     def visualize(self):
@@ -137,6 +140,6 @@ class BacktestCalculator:
         """
         from xno.backtest.vs import StrategyVisualizer
         
-        visualizer = StrategyVisualizer(backtest_calculator=self, name=self.strategy_id)
+        visualizer = StrategyVisualizer( name=self.strategy_id)
         visualizer.visualize()
     

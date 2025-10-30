@@ -1,9 +1,10 @@
 from abc import abstractmethod, ABC
-from typing import List, Dict
+from typing import List, Dict, Optional
 
 from confluent_kafka import Producer
 
 from xno import settings
+from xno.backtest import StrategyTradeSummary
 from xno.connectors.rd import RedisClient
 from xno.trade import (
     AllowedTradeMode,
@@ -94,8 +95,10 @@ class StrategyRunner(ABC):
         self.ht_times: List[pd.Timestamp | str] = []
         self.ht_positions: List[float] = []
         self.ht_trade_sizes: List[float] = []
+        self.ht_actions: List[str] = []
         # Data fields to load
         self.data_fields: Dict[str, FieldInfo] = {}
+        self.bt_summary: Optional[StrategyTradeSummary] = None
 
     def add_field(self, field_id: str, field_name: str, ticker: str | None = None):
         """
@@ -348,6 +351,12 @@ class StrategyRunner(ABC):
         # Step through each signal (buy/sell/hold) and simulate trading
         for time_idx in range(len(self.signals)):
             self.__step__(time_idx)
+            # Update history
+            self.ht_actions.append(self.current_state.current_action)
+            self.ht_trade_sizes.append(self.current_state.trade_size)
+            self.ht_positions.append(self.current_state.current_position)
+            self.ht_prices.append(self.current_state.current_price)
+            self.ht_times.append(self.current_state.candle)
 
         logging.debug(f"Finalizing strategy run and sending data for strategy_id={self.strategy_id}")
         self.__done__()
@@ -358,6 +367,8 @@ class StrategyRunner(ABC):
             "final_position": self.current_state.current_position,
             "final_weight": self.current_state.current_weight,
             "final_price": self.current_state.current_price,
+            "from_time": self.run_from,
+            "to_time": self.run_to,
             "final_time": self.current_state.candle,
         }
 
@@ -367,6 +378,32 @@ class StrategyRunner(ABC):
         :return:
         """
         raise NotImplementedError("Subclasses should implement this method.")
+
+    def backtest(self) -> StrategyTradeSummary:
+        """
+        Run backtest for the strategy using BacktestCalculator.
+        :return:
+        """
+        if self.bt_summary is None:
+            from xno.backtest.bt import BacktestCalculator
+
+            bt_input = self.get_backtest_input()
+            bt_calculator = BacktestCalculator(bt_input)
+            self.bt_summary = bt_calculator.summarize()
+        return self.bt_summary
+
+    def visualize(self) -> None:
+        """
+        Visualize the backtest results.
+        :return:
+        """
+        if self.bt_summary is None:
+            self.backtest()
+
+        bt_input = self.get_backtest_input()
+        from xno.backtest import StrategyVisualizer
+        visualizer = StrategyVisualizer(self, name=self.strategy_id)
+        visualizer.visualize()
 
 
 if __name__ == "__main__":

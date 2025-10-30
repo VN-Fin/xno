@@ -104,11 +104,6 @@ class StockRunner(StrategyRunner):
         self.current_state.candle = current_time
         self.current_state.trade_size = current_trade_size
         self.current_time_idx = time_idx
-        # Update history
-        self.ht_trade_sizes.append(self.current_state.trade_size)
-        self.ht_positions.append(self.current_state.current_position)
-        self.ht_prices.append(self.current_state.current_price)
-        self.ht_times.append(self.current_state.candle)
 
 
 if __name__ == "__main__":
@@ -165,6 +160,8 @@ if __name__ == "__main__":
         )
         runner.run()
         logging.info(f"Run stats: {runner.stats()}")
+        logging.info(f"Backtest: {runner.backtest()}")
+        runner.visualize()
 
     except Exception as e:
         print(f"\nERROR: {e}")

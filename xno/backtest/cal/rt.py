@@ -14,6 +14,8 @@ class BacktestResult:
     pnl: np.ndarray
     fees: np.ndarray
     equity_curve: np.ndarray
+    bm_equities: np.ndarray # ADD if needed
+
 
 
 def get_returns_stock(

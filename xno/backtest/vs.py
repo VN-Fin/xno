@@ -1,19 +1,19 @@
-from typing import Dict
+from typing import Dict, List
 import logging
 import pandas as pd
 import numpy as np
 
+from xno.backtest.summary import BacktestState
+
 
 class StrategyVisualizer:
-    def __init__(self, backtest_calculator, name: str = None):
+    def __init__(self, state_history: List[BacktestState], name: str = None):
         """
         Initialize StrategyVisualizer with a BacktestCalculator instance.
         
         Args:
-            backtest_calculator: BacktestCalculator instance containing backtest data
             name: Optional name for the strategy
         """
-        self._calculator = backtest_calculator
         self.name = name
         self._bt_df = None
     
@@ -89,7 +89,6 @@ class StrategyVisualizer:
         # Set index to candle time
         if 'candle' in df.columns:
             df.set_index('candle', inplace=True)
-        
         return df
         
     def performance_summary(self) -> Dict:

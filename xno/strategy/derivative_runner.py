@@ -80,11 +80,6 @@ class DerivativeRunner(StrategyRunner):
             f"Position={self.current_state.current_position:.2f}, "
             f"Weight={self.current_state.current_weight:.2f}"
         )
-        # Update history
-        self.ht_trade_sizes.append(self.current_state.trade_size)
-        self.ht_positions.append(self.current_state.current_position)
-        self.ht_prices.append(self.current_state.current_price)
-        self.ht_times.append(self.current_state.candle)
 
 
 

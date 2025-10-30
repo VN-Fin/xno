@@ -23,6 +23,7 @@ class BacktestCalculator:
             raise ValueError("trading_states cannot be empty")
             
         self.trading_states = trading_states
+        self.strategy_id = trading_states[0].strategy_id
         self.init_cash = float(trading_states[0].book_size)
         self.symbol_type = trading_states[0].symbol_type
         # Determine fee rate based on symbol type
@@ -148,15 +149,12 @@ class BacktestCalculator:
             analysis=self.calculate_trade_analysis(),
         )
     
-    def visualize(self, name: str = None):
+    def visualize(self):
         """
         Visualize the backtest results using StrategyVisualizer.
-        
-        Args:
-            name: Optional name for the strategy visualization
         """
         from xno.backtest.vs import StrategyVisualizer
         
-        visualizer = StrategyVisualizer(backtest_calculator=self, name=name)
+        visualizer = StrategyVisualizer(backtest_calculator=self, name=self.strategy_id)
         visualizer.visualize()
     

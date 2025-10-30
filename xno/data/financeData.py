@@ -1,7 +1,6 @@
 import logging
 
 import pandas as pd
-from vnstock import Finance
 from cachetools import TTLCache, cached
 from typing import Literal
 
@@ -16,6 +15,8 @@ def get_financial_data(
     symbol: str,
     period: Literal['quarter', 'year'] = 'quarter'
 ) -> pd.DataFrame:
+    from vnstock import Finance
+
     finance = Finance(symbol=symbol, source='VCI', period=period, get_all=True)
     incomStatement_df = finance.income_statement(period=period, lang='vi')
     balanSheet_df = finance.balance_sheet(period=period, lang='vi')

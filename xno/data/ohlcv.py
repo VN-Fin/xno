@@ -380,6 +380,6 @@ if __name__ == "__main__":
     while True:
         time.sleep(10)
         print(OhlcvDataManager.stats())
-        datas = OhlcvDataManager.get("D", "AAA", from_time="2015-01-01", factor=1000)
+        datas = OhlcvDataManager.get("D", "AAA", from_time="2015-01-01", to_time="2025-12-31", factor=1000)
         print(datas)
         print(datas.dtypes)

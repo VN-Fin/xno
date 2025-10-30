@@ -3,9 +3,10 @@ from abc import abstractmethod
 from datetime import timedelta
 from typing import List
 
+from xno.data.ohlcv import OhlcvDataManager
 from xno.strategy.strategy_runner import StrategyRunner
 from xno.trade import (
-    AllowedAction, AllowedTradeMode,
+    AllowedAction, AllowedTradeMode, StrategyConfigLoader,
 )
 import logging
 
@@ -111,31 +112,61 @@ class StockRunner(StrategyRunner):
 
 
 if __name__ == "__main__":
-    class CustomStockRunner(StockRunner):
+    from xno.data import Fields
+    from xno.trade import AllowedTradeMode
+
+
+    # Test class for demonstrating add_field and load_data functionality
+    class TestStrategyRunner(StockRunner):
+        """
+        Test implementation of StrategyRunner to test add_field and load_data
+        """
         def __generate_signal__(self) -> List[float]:
-            # Example: Generate random signals for demonstration
+            # Random signals for testing
             import numpy as np
             return np.random.uniform(-1, 1, size=len(self.prices)).tolist()
 
         def __load_data__(self):
-            # Example: Load dummy data for demonstration
-            import pandas as pd
-            import numpy as np
-            dates = pd.date_range(start="2024-01-01", periods=100, freq='D')
-            prices = pd.Series(100 + np.random.randn(100).cumsum(), index=dates)
-            self.datas = pd.DataFrame({'Close': prices})
+            # Override to load OHLCV data for testing
+            self.datas = OhlcvDataManager.get(
+                resolution=self.timeframe,
+                symbol=self.symbol,
+                from_time=self.run_from,
+                to_time=self.run_to,
+                factor=1000,
+            )
+            return self.datas
 
-    # Example usage
-    runner = CustomStockRunner(
-        strategy_id="3678555cc9223946a6e40d38be4cc89f",
-        mode=AllowedTradeMode.LiveTrade,
-        re_run=True,
-        send_data=False
-    )
-    runner.add_field(
-        "Volume", "Volume"
-    ).add_field(
-        "VN30Volume", "Volume", ticker="VN30"
-    )
-    runner.run()
-    print(runner.stats())
+
+    # Create a mock config class for testing
+    class MockConfig:
+        def __init__(self):
+            from xno.trade import AllowedSymbolType
+            from xno.trade import AllowedEngine
+
+            self.run_from = "2020-01-01"
+            self.run_to = "2025-12-31"
+            self.symbol = "AAA"
+            self.timeframe = "D"
+            self.init_cash = 1e9
+            self.engine = AllowedEngine.TABot
+            self.symbol_type = AllowedSymbolType.Stock
+
+    # Mock the config loader
+    original_get_config = StrategyConfigLoader.get_config
+    StrategyConfigLoader.get_config = lambda strategy_id, mode: MockConfig()
+
+    try:
+        runner = TestStrategyRunner(
+            strategy_id="test_strategy",
+            mode=AllowedTradeMode.BackTrade,
+            re_run=False,
+            send_data=False,
+        )
+        runner.run()
+        logging.info(f"Run stats: {runner.stats()}")
+
+    except Exception as e:
+        print(f"\nERROR: {e}")
+        import traceback
+        traceback.print_exc()

@@ -11,7 +11,7 @@ from xno.trade import (
     StrategySignal,
     AllowedAction,
     StrategyConfigLoader,
-    FieldInfo,
+    FieldInfo, AllowedEngine,
 )
 import pandas as pd
 import logging
@@ -391,13 +391,15 @@ if __name__ == "__main__":
     # Create a mock config class for testing
     class MockConfig:
         def __init__(self):
+            from xno.trade import AllowedSymbolType
+
             self.run_from = "2023-01-01"
             self.run_to = "2024-12-31"
             self.symbol = "SSI"
             self.timeframe = "D"
             self.init_cash = 1000000000
-            self.engine = "test"
-            self.symbol_type = "stock"
+            self.engine = AllowedEngine.TABot
+            self.symbol_type = AllowedSymbolType.Stock
 
     # Mock the config loader
     original_get_config = StrategyConfigLoader.get_config
@@ -448,7 +450,7 @@ if __name__ == "__main__":
         )
         runner.__setup__()
         runner.__load_data__()
-        print(runner.datas.tail(3).to_string())
+        logging.info(f"fThe datas:{runner.datas}")
 
     except Exception as e:
         print(f"\nERROR: {e}")

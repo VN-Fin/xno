@@ -37,7 +37,7 @@ class BacktestCalculator:
         self.actions: List[str] = inp.actions
         self.bt_mode = inp.bt_mode
 
-        self.returns: np.ndarray = None
+        self.returns: pd.Series = None
 
         self.trade_analysis: TradeAnalysis = None
         self.performance: TradePerformance = None

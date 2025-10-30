@@ -9,7 +9,7 @@ class BacktestResult:
     prices: np.ndarray
     positions: np.ndarray
     trade_sizes: np.ndarray
-    returns: np.ndarray
+    returns: pd.Series
     cumret: np.ndarray
     pnl: np.ndarray
     fees: np.ndarray
@@ -48,12 +48,14 @@ def get_returns_stock(
 
     pnl_cum = np.cumsum(pnl)
     fees_cum = np.cumsum(fees)
-
     equity = init_cash + pnl_cum - fees_cum
 
     returns = np.zeros_like(equity)
     returns[1:] = (equity[1:] - equity[:-1]) / equity[:-1]
+
     cumret = _compound_returns(returns)
+
+    returns = pd.Series(returns, index=pd.to_datetime(times))
 
     bm_equity = (init_cash / prices[0]) * prices
     bm_returns = np.zeros_like(bm_equity)
@@ -84,7 +86,7 @@ def get_returns_derivative(
         prices,
         positions,
         trade_sizes,
-        fee_rate=20_000 
+        fee_rate=20_000
 ) -> BacktestResult:
 
     if not (len(times) == len(prices) == len(positions) == len(trade_sizes)):
@@ -105,7 +107,11 @@ def get_returns_derivative(
 
     returns = np.zeros_like(equity)
     returns[1:] = (equity[1:] - equity[:-1]) / equity[:-1]
+
     cumret = _compound_returns(returns)
+
+    returns = pd.Series(returns, index=pd.to_datetime(times))
+
 
     bm_pnl = np.cumsum(price_diff * 100_000)
     bm_equity = init_cash + bm_pnl

@@ -124,6 +124,7 @@ class StrategyRunner(ABC):
     def get_backtest_input(self) -> BacktestInput:
         return BacktestInput(
             strategy_id=self.strategy_id,
+            re_run=self.re_run,
             book_size=self.init_cash,
             symbol_type=self.symbol_type,
             times=np.array(self.times, dtype='datetime64[ns]'),

@@ -5,6 +5,7 @@ import numpy as np
 @dataclass
 class BacktestInput:
     strategy_id: str
+    re_run: bool
     book_size: float
     symbol_type: str
     times: np.ndarray

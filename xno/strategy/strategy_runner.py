@@ -126,6 +126,8 @@ class StrategyRunner(ABC):
 
     def get_backtest_input(self) -> BacktestInput:
         return BacktestInput(
+            bt_mode=self.mode,
+            actions=self.ht_actions,
             strategy_id=self.strategy_id,
             re_run=self.re_run,
             book_size=self.init_cash,
@@ -392,7 +394,7 @@ class StrategyRunner(ABC):
             self.bt_summary = bt_calculator.summarize()
         return self.bt_summary
 
-    def visualize(self) -> None:
+    def visualize(self, name: str = None) -> None:
         """
         Visualize the backtest results.
         :return:
@@ -402,7 +404,7 @@ class StrategyRunner(ABC):
 
         bt_input = self.get_backtest_input()
         from xno.backtest import StrategyVisualizer
-        visualizer = StrategyVisualizer(self, name=self.strategy_id)
+        visualizer = StrategyVisualizer(self, name=name or self.strategy_id)
         visualizer.visualize()
 
 

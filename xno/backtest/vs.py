@@ -3,148 +3,66 @@ import logging
 import pandas as pd
 import numpy as np
 
-from xno.backtest.summary import BacktestState
-
+from xno.backtest.pf import TradePerformance
 
 class StrategyVisualizer:
-    def __init__(self, state_history: List[BacktestState], name: str = None):
+    def __init__(self, runner, name: str = None):
         """
-        Initialize StrategyVisualizer with a BacktestCalculator instance.
-        
+        Visualize from a StrategyRunner instance (not summary directly).
         Args:
-            name: Optional name for the strategy
+          runner: StrategyRunner (must have bt_summary, or .backtest() method)
+          name: Optional name (defaults to runner.strategy_id)
         """
-        self.name = name
-        self._bt_df = None
-    
-    def get_visualization_data(self) -> pd.DataFrame:
-        """
-        Build dataframe for visualization with all required columns.
-        
-        Returns:
-            DataFrame with columns for backtest visualization
-        """
-        # Ensure returns are calculated
-        returns = self._calculator.calculate_returns()
-        
-        # Build visualization dataframe from states_df
-        df = self._calculator.states_df.copy()
-        
-        # Get basic data
-        equity_curve = self._calculator.equity_curve
-        prices = self._calculator.prices
-        trade_sizes = self._calculator.trade_sizes
-        fees = self._calculator.fees
-        init_cash = self._calculator.init_cash
-        
-        # === Calculate step_ret (periodic return) ===
-        # step_ret[t] = (equity[t] - equity[t-1]) / equity[t-1]
-        step_ret = np.zeros_like(equity_curve, dtype=np.float64)
-        step_ret[1:] = (equity_curve[1:] - equity_curve[:-1]) / equity_curve[:-1]
-        df['step_ret'] = step_ret
-        
-        # === Calculate cum_ret (cumulative return - compound) ===
-        # cum_ret[t] = ∏(1 + step_ret[i]) - 1
-        cum_ret = np.cumprod(1 + step_ret) - 1
-        df['cum_ret'] = cum_ret
-        
-        # === Calculate bm_equity (benchmark equity) ===
-        # bm_equity = (init_cash / init_price) × current_price
-        first_price = float(prices[0])
-        bm_equity = (init_cash / first_price) * prices
-        df['bm_equity'] = bm_equity
-        
-        # === Calculate bm_step_ret ===
-        # bm_step_ret[t] = (bm_equity[t] - bm_equity[t-1]) / bm_equity[t-1]
-        bm_step_ret = np.zeros_like(bm_equity, dtype=np.float64)
-        bm_step_ret[1:] = (bm_equity[1:] - bm_equity[:-1]) / bm_equity[:-1]
-        df['bm_step_ret'] = bm_step_ret
-        
-        # === Calculate bm_cum_ret (cumulative return - compound) ===
-        # bm_cum_ret[t] = ∏(1 + bm_step_ret[i]) - 1
-        bm_cum_ret = np.cumprod(1 + bm_step_ret) - 1
-        df['bm_cum_ret'] = bm_cum_ret
-        
-        # Price column
-        df['price'] = prices
-        
-        # Action column - Extract value from AllowedAction enum (B/S/H)
-        df['action'] = df['current_action'].apply(lambda x: x.value if hasattr(x, 'value') else str(x) if x is not None else 'H')
-        
-        # Equity column from equity curve
-        df['equity'] = equity_curve
-        
-        # Amount column from trade_sizes
-        df['amount'] = trade_sizes
-        
-        # Fee column from fees array
-        df['fee'] = fees
-        
-        # Value column: amount × price
-        df['value'] = trade_sizes * prices
-        
-        # Signal column: Use current_weight as signal
-        df['signal'] = df['current_weight']
-        
-        # Set index to candle time
-        if 'candle' in df.columns:
-            df.set_index('candle', inplace=True)
-        return df
-        
+        if not hasattr(runner, 'bt_summary') or runner.bt_summary is None:
+            # Trigger backtest summary if missing
+            if hasattr(runner, 'backtest'):
+                summary = runner.backtest()
+            else:
+                raise ValueError("Runner must have .bt_summary or a .backtest() method!")
+        else:
+            summary = runner.bt_summary
+        # Extract info
+        self.state_history = summary.state_history  # Now a dict of lists
+        self.performance = getattr(summary, 'performance', None)
+        self.analysis = getattr(summary, 'analysis', None)
+        self.name = name or getattr(runner, 'strategy_id', None) or runner.__class__.__name__
+
     def performance_summary(self) -> Dict:
-        """
-        Get performance metrics summary.
-        
-        Returns:
-            Dictionary with performance metrics
-        """
-        performance = self._calculator.calculate_performance_metrics()
-        
-        # Extract metrics from TradePerformance object
-        summary = {
-            'Avg Return': performance.avg_return,
-            'Cumulative Return': performance.cumulative_return,
-            'Annual Return': performance.annual_return,
-            'Sharpe Ratio': performance.sharpe,
-            'Sortino Ratio': performance.sortino,
-            'Max Drawdown': performance.max_drawdown,
-            'Volatility': performance.volatility,
-            'Win Rate': performance.win_rate,
-            'Profit Factor': performance.profit_factor,
-            'Calmar Ratio': performance.calmar,
-            'CVaR': performance.cvar,
-            'Var': performance.var,
-            'Ulcer Index': performance.ulcer_index,
-            'Tail Ratio': performance.tail_ratio,
-            'Gain to Pain Ratio': performance.gain_to_pain_ratio,
-            'Recovery Factor': performance.recovery_factor,
-            'Omega': performance.omega,
-            'Kelly Criterion': performance.kelly_criterion,
-            'Win/Loss Ratio': performance.win_loss_ratio,
+        return {
+            'Avg Return': self.performance.avg_return,
+            'Cumulative Return': self.performance.cumulative_return,
+            'Annual Return': self.performance.annual_return,
+            'Sharpe Ratio': self.performance.sharpe,
+            'Sortino Ratio': self.performance.sortino,
+            'Max Drawdown': self.performance.max_drawdown,
+            'Volatility': self.performance.volatility,
+            'Win Rate': self.performance.win_rate,
+            'Profit Factor': self.performance.profit_factor,
+            'Calmar Ratio': self.performance.calmar,
+            'CVaR': self.performance.cvar,
+            'Var': self.performance.var,
+            'Ulcer Index': self.performance.ulcer_index,
+            'Tail Ratio': self.performance.tail_ratio,
+            'Gain to Pain Ratio': self.performance.gain_to_pain_ratio,
+            'Recovery Factor': self.performance.recovery_factor,
+            'Omega': self.performance.omega,
+            'Kelly Criterion': self.performance.kelly_criterion,
+            'Win/Loss Ratio': self.performance.win_loss_ratio,
         }
-        
-        return summary
-    
+
     def visualize(self):
-        """
-        Visualize the backtest results including:
-        - Cumulative returns vs benchmark
-        - Price with Buy/Sell signals
-        - Metrics summary table
-        """
-        # Load dataframe for visualization
-        if self._bt_df is None:
-            self._bt_df = self.get_visualization_data()
-        
-        if self._bt_df is None or self._bt_df.empty:
+        if not self.state_history or len(next(iter(self.state_history.values()))) == 0:
             logging.warning("No backtest data available to visualize.")
             return
+        df = pd.DataFrame(self.state_history)
+        df.set_index('candle', inplace=True)
+        df.index = pd.to_datetime(df.index)
 
-        df = self._bt_df.sort_index()
+
+        df = df.sort_index()
         performance = self.performance_summary()
-
         metric_names = list(sorted(performance.keys()))
-        metric_values = [f"{performance[m]:.4f}" if isinstance(performance[m], float) else "-" for m in metric_names]
+        metric_values = [f"{performance[m]:.4f}" if isinstance(performance[m], float) else str(performance[m]) for m in metric_names]
 
         import plotly.graph_objects as go
         from plotly.subplots import make_subplots
@@ -163,32 +81,31 @@ class StrategyVisualizer:
 
         # === Row 1: Strategy vs Benchmark ===
         fig.add_trace(go.Scatter(
-            x=df.index, y=df['cum_ret'], mode='lines', name='Strategy',
+            x=df.index, y=df['cumret'], mode='lines', name='Strategy',
             line=dict(color='blue')
         ), row=1, col=1)
 
         fig.add_trace(go.Scatter(
-            x=df.index, y=df['bm_cum_ret'], mode='lines', name='Benchmark',
+            x=df.index, y=df['bm_cumret'], mode='lines', name='Benchmark',
             line=dict(color='gray', dash='dot')
         ), row=1, col=1)
 
         # === Row 2: Price with Buy/Sell signals ===
         fig.add_trace(go.Scatter(
-            x=df.index, y=df['price'], mode='lines', name='Price',
+            x=df.index, y=df['prices'], mode='lines', name='Price',
             line=dict(color='black')
         ), row=2, col=1)
 
         # Buy markers
-        buy_df = df[df['action'] == 'B'].copy()
+        buy_df = df[df['actions'] == 'B'].copy()
         buy_df['date_str'] = buy_df.index.strftime('%Y-%m-%d')
         buy_df['time_str'] = buy_df.index.strftime('%H:%M:%S')
-        # Format to string, 100000000 -> 100,000,000
-        buy_df['balance_str'] = buy_df['equity'].apply(lambda x: f"{x:,.2f}")
-        buy_df['amount_str'] = buy_df['amount'].apply(lambda x: f"{x:.2f}")
-        buy_df['fee_str'] = buy_df['fee'].apply(lambda x: f"{x:.2f}")
-        buy_df['price_str'] = buy_df['price'].apply(lambda x: f"{x:.2f}")
+        buy_df['balance_str'] = buy_df['balance'].astype(float).apply(lambda x: f"{x:,.2f}")
+        buy_df['amount_str'] = buy_df['trade_sizes'].astype(float).apply(lambda x: f"{x:.2f}")
+        buy_df['fee_str'] = buy_df['fees'].astype(float).apply(lambda x: f"{x:.2f}")
+        buy_df['price_str'] = buy_df['prices'].astype(float).apply(lambda x: f"{x:.2f}")
         fig.add_trace(go.Scatter(
-            x=buy_df.index, y=buy_df['price'], mode='markers', name='Buy',
+            x=buy_df.index, y=buy_df['prices'], mode='markers', name='Buy',
             marker=dict(symbol='triangle-up', color='green', size=10),
             hovertemplate="Buy [%{customdata[0]}]<br>"
                           "Time: %{customdata[1]}<br>"
@@ -201,16 +118,15 @@ class StrategyVisualizer:
         ), row=2, col=1)
 
         # Sell markers
-        sell_df = df[df['action'] == 'S'].copy()
+        sell_df = df[df['actions'] == 'S'].copy()
         sell_df['date_str'] = sell_df.index.strftime('%Y-%m-%d')
         sell_df['time_str'] = sell_df.index.strftime('%H:%M:%S')
-        # Format to string, 100000000 -> 100,000,000
-        sell_df['balance_str'] = sell_df['equity'].apply(lambda x: f"{x:,.2f}")
-        sell_df['amount_str'] = sell_df['amount'].apply(lambda x: f"{x:.2f}")
-        sell_df['fee_str'] = sell_df['fee'].apply(lambda x: f"{x:.2f}")
-        sell_df['price_str'] = sell_df['price'].apply(lambda x: f"{x:.2f}")
+        sell_df['balance_str'] = sell_df['balance'].astype(float).apply(lambda x: f"{x:,.2f}")
+        sell_df['amount_str'] = sell_df['trade_sizes'].astype(float).apply(lambda x: f"{x:.2f}")
+        sell_df['fee_str'] = sell_df['fees'].astype(float).apply(lambda x: f"{x:.2f}")
+        sell_df['price_str'] = sell_df['prices'].astype(float).apply(lambda x: f"{x:.2f}")
         fig.add_trace(go.Scatter(
-            x=sell_df.index, y=sell_df['price'], mode='markers', name='Sell',
+            x=sell_df.index, y=sell_df['prices'], mode='markers', name='Sell',
             marker=dict(symbol='triangle-down', color='red', size=10),
             hovertemplate="Sell [%{customdata[0]}]<br>"
                           "Time: %{customdata[1]}<br>"
@@ -221,26 +137,24 @@ class StrategyVisualizer:
                           "<extra></extra>",
             customdata=sell_df[['date_str', 'time_str', 'price_str', 'amount_str', 'fee_str', 'balance_str']].values
         ), row=2, col=1)
-
-        # Latest annotation
         last_row = df.iloc[-1]
         fig.add_trace(go.Scatter(
-            x=[last_row.index], y=[last_row['cum_ret']],
-            mode='text', text=[f" - {last_row['cum_ret']:.2f}"],
+            x=[last_row.name], y=[last_row['cumret']],
+            mode='text', text=[f" - {last_row['cumret']:.2f}"],
             textposition='middle right',
             textfont=dict(color='blue', size=12), showlegend=False
         ), row=1, col=1)
 
         fig.add_trace(go.Scatter(
-            x=[last_row.index], y=[last_row['bm_cum_ret']],
-            mode='text', text=[f" - {last_row['bm_cum_ret']:.2f}"],
+            x=[last_row.name], y=[last_row['bm_cumret']],
+            mode='text', text=[f" - {last_row['bm_cumret']:.2f}"],
             textposition='middle right',
             textfont=dict(color='gray', size=12), showlegend=False
         ), row=1, col=1)
 
         fig.add_trace(go.Scatter(
-            x=[last_row.index], y=[last_row['price']],
-            mode='text', text=[f" - {last_row['price']:.2f}"],
+            x=[last_row.name], y=[last_row['prices']],
+            mode='text', text=[f" - {last_row['prices']:.2f}"],
             textposition='middle right',
             textfont=dict(color='black', size=12), showlegend=False
         ), row=2, col=1)

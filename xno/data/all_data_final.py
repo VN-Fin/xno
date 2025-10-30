@@ -26,9 +26,9 @@ class AllData:
         return self
 
     @timing
-    def get(self, resolution: str, symbol: str, period: Literal['quarter', 'year'] = 'quarter') -> pd.DataFrame:
+    def get(self, resolution: str, symbol: str, period: Literal['quarter', 'year'] = 'quarter', from_time=None) -> pd.DataFrame:
         OhlcvDataManager.stats()
-        ohlcv_df = OhlcvDataManager.get(resolution, symbol, factor=1000)
+        ohlcv_df = OhlcvDataManager.get(resolution, symbol, factor=1000, from_time=from_time)
         if ohlcv_df.empty:
             raise ValueError("No OHLCV data found.")
 
@@ -81,15 +81,15 @@ if __name__ == "__main__":
         .add_field(Fields.BalanceSheet.DAU_TU_DAI_HAN_DONG) \
         .add_field(Fields.Ratio.P_E)
 
-    re = all_data.get(resolution="D", symbol="SSI", period="quarter")
-    print(re[-5:].to_string(index=True, header=True, justify='left'))
+    re = all_data.get(resolution="D", symbol="SSI", period="quarter", from_time="2015-01-01")
+    print(re.to_string(index=True, header=True, justify='left'))
     print(f"\nColumns: {list(re.columns)}")
 
     # Test default behavior (no fields added - should return Close only)
     logging.info("\n=== Test 2: Default (Close always included) ===")
     all_data_default = AllData()
     re_default = all_data_default.get(resolution="D", symbol="SSI", period="quarter")
-    print(re_default[-5:].to_string(index=True, header=True, justify='left'))
+    print(re_default.to_string(index=True, header=True, justify='left'))
     print(f"\nColumns: {list(re_default.columns)}")
 
     # Test only financial fields (should include Close + financial fields)
@@ -98,5 +98,5 @@ if __name__ == "__main__":
         .add_field(Fields.IncomeStatement.CHI_PHI_TAI_CHINH) \
         .add_field(Fields.Ratio.P_E)
     re_finance = all_data_finance.get(resolution="D", symbol="SSI", period="quarter")
-    print(re_finance[-5:].to_string(index=True, header=True, justify='left'))
+    print(re_finance.to_string(index=True, header=True, justify='left'))
     print(f"\nColumns: {list(re_finance.columns)}")

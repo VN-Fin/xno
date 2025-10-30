@@ -50,6 +50,7 @@ class BacktestCalculator:
         # Analysis results
         self.performance: Optional[TradePerformance] = None
         self.trade_analysis: Optional[TradeAnalysis] = None
+        self.states_df = pd.DataFrame()
         
         # Extract data from trading states
         self._extract_data()
@@ -57,13 +58,17 @@ class BacktestCalculator:
     def _extract_data(self):
         """Extract relevant data from trading states."""
         # Use pandas to extract data without any loops
-        states_df = pd.DataFrame([s.model_dump() if hasattr(s, "model_dump") else s.__dict__ for s in self.trading_states])
-        self.states_df = states_df
+        if isinstance(self.trading_states[0], dict):
+            self.states_df = pd.DataFrame(self.trading_states)
+        else:
+            self.states_df = pd.DataFrame([s.model_dump() for s in self.trading_states])
+        # Set datatype conversions if necessary
+        self.states_df['candle'] = pd.to_datetime(self.states_df['candle'])
         # Extract data using vectorized operations and convert to numpy arrays
-        self.times = states_df['candle'].values
-        self.prices = states_df['current_price'].values
-        self.positions = states_df['current_position'].values
-        self.trade_sizes = states_df['trade_size'].values
+        self.times = self.states_df['candle'].values
+        self.prices = self.states_df['current_price'].values
+        self.positions = self.states_df['current_position'].values
+        self.trade_sizes = self.states_df['trade_size'].values
     
     def calculate_returns(self) -> pd.Series:
         """

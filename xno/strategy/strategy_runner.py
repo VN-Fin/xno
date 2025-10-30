@@ -392,7 +392,7 @@ class StrategyRunner(ABC):
             self.bt_summary = bt_calculator.summarize()
         return self.bt_summary
 
-    def visualize(self) -> None:
+    def visualize(self, name: str = None) -> None:
         """
         Visualize the backtest results.
         :return:
@@ -402,7 +402,7 @@ class StrategyRunner(ABC):
 
         bt_input = self.get_backtest_input()
         from xno.backtest import StrategyVisualizer
-        visualizer = StrategyVisualizer(self, name=self.strategy_id)
+        visualizer = StrategyVisualizer(self, name=name or self.strategy_id)
         visualizer.visualize()
 
 

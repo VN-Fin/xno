@@ -1,5 +1,19 @@
+import dataclasses
+
 import numpy as np
 import pandas as pd
+
+
+@dataclasses.dataclass
+class BacktestResult:
+    times: np.ndarray
+    prices: np.ndarray
+    positions: np.ndarray
+    trade_sizes: np.ndarray
+    returns: pd.Series
+    pnl: np.ndarray
+    fees: np.ndarray
+    equity_curve: np.ndarray
 
 
 def get_returns_stock(
@@ -9,7 +23,7 @@ def get_returns_stock(
         positions,
         trade_sizes,
         fee_rate=0.0015  # 0.15%
-) -> pd.Series:
+) -> BacktestResult:
 
     # --- Validate input lengths ---
     if not (len(times) == len(prices) == len(positions) == len(trade_sizes)):
@@ -41,13 +55,16 @@ def get_returns_stock(
     returns = np.zeros_like(equity)
     returns[1:] = (equity[1:] - equity[:-1]) / equity[:-1]
 
-    # --- Create result Series with metadata ---
-    result = pd.Series(returns, index=pd.Index(times, name="time"), name="return")
-    result.attrs['pnl'] = pnl
-    result.attrs['fees'] = fees
-    result.attrs['equity_curve'] = equity
-
-    return result
+    return BacktestResult(
+        times=times,
+        prices=prices,
+        positions=positions,
+        trade_sizes=trade_sizes,
+        pnl=pnl,
+        returns=returns,
+        fees=fees,
+        equity_curve=equity
+    )
 
 
 def get_returns_derivative(
@@ -57,7 +74,7 @@ def get_returns_derivative(
         positions,
         trade_sizes,
         fee_rate=20_000 
-) -> pd.Series:
+) -> BacktestResult:
     # --- Validate input lengths ---
     if not (len(times) == len(prices) == len(positions) == len(trade_sizes)):
         raise ValueError("times, prices, positions, and trade_sizes must have the same length.")
@@ -88,10 +105,13 @@ def get_returns_derivative(
     returns = np.zeros_like(equity)
     returns[1:] = (equity[1:] - equity[:-1]) / equity[:-1]
 
-    # --- Create result Series with metadata ---
-    result = pd.Series(returns, index=pd.Index(times, name="time"), name="return")
-    result.attrs['pnl'] = pnl
-    result.attrs['fees'] = fees
-    result.attrs['equity_curve'] = equity
-
-    return result
+    return BacktestResult(
+        times=times,
+        prices=prices,
+        positions=positions,
+        trade_sizes=trade_sizes,
+        returns=returns,
+        pnl=pnl,
+        fees=fees,
+        equity_curve=equity
+    )

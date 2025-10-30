@@ -126,6 +126,8 @@ class StrategyRunner(ABC):
 
     def get_backtest_input(self) -> BacktestInput:
         return BacktestInput(
+            bt_mode=self.mode,
+            actions=self.ht_actions,
             strategy_id=self.strategy_id,
             re_run=self.re_run,
             book_size=self.init_cash,

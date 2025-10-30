@@ -16,3 +16,4 @@ from xno.trade.tp import (
 )
 from xno.basic_type import DateTimeType, BooleanType, NumericType
 from xno.trade.fields import FieldInfo
+from xno.trade.backtest import BacktestInput

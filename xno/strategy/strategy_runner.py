@@ -18,6 +18,7 @@ import logging
 import xno.utils.keys as ukeys
 import numpy as np
 
+from xno.trade.backtest import BacktestInput
 from xno.utils.stream import delivery_report
 from xno.data.all_data_final import AllData
 import threading
@@ -83,12 +84,17 @@ class StrategyRunner(ABC):
             self.symbol_type = self.cfg.symbol_type
 
         self.current_state: StrategyState | None = None
-        self.trading_states: List[StrategyState] | None = None
         self.pending_sell_pos = 0.0
         self.current_time = None
         self.signals: List[float] | None = None
-        self.ht_prices: List[float] | None = None
-        self.ht_times: List[pd.Timestamp] | None = None
+        self.prices: List[float] | None = None
+        self.times: List[pd.Timestamp] | None = None
+        # History tracking
+        self.ht_prices: List[float] = []
+        self.ht_times: List[pd.Timestamp | str] = []
+        self.ht_positions: List[float] = []
+        self.ht_trade_sizes: List[float] = []
+        # Data fields to load
         self.data_fields: Dict[str, FieldInfo] = {}
 
     def add_field(self, field_id: str, field_name: str, ticker: str | None = None):
@@ -114,6 +120,17 @@ class StrategyRunner(ABC):
         self.data_fields["Low"] = FieldInfo(field_id="Low", field_name="Low", ticker=self.symbol)
         self.data_fields["Close"] = FieldInfo(field_id="Close", field_name="Close", ticker=self.symbol)
         self.data_fields["Volume"] = FieldInfo(field_id="Volume", field_name="Volume", ticker=self.symbol)
+
+    def get_backtest_input(self) -> BacktestInput:
+        return BacktestInput(
+            strategy_id=self.strategy_id,
+            book_size=self.init_cash,
+            symbol_type=self.symbol_type,
+            times=np.array(self.times, dtype='datetime64[ns]'),
+            prices=np.array(self.prices, dtype=np.float64),
+            positions=np.array(self.ht_positions, dtype=np.float64),
+            trade_sizes=np.array(self.ht_trade_sizes, dtype=np.float64),
+        )
 
     def __load_data__(self):
         """
@@ -268,42 +285,13 @@ class StrategyRunner(ABC):
         )
 
     def __done__(self):
-        send_from_cp = self.checkpoint_idx
-        if self.re_run:
-            logging.info(f"Re-run mode, send all existing records for strategy_id={self.strategy_id}")
-            send_from_cp = 0
-        else:
-            logging.info(f"Insert new records for strategy_id={self.strategy_id}")
-        send_records = self.trading_states[send_from_cp:]
-        if len(send_records) == 0:
-            logging.info(f"No new records to send for strategy_id={self.strategy_id}")
-            return
         # Send signal [Optional]
         if self.send_data:
             if self.current_state.bt_mode == AllowedTradeMode.LiveTrade:
                 self.__send_signal__()
+                self.__send_state__()
         else:
             logging.info(f"send_data is False, skipping sending latest signal for strategy_id={self.strategy_id}")
-        # And send to Kafka
-        send_states = self.trading_states[send_from_cp:]
-        if len(send_states) == 0:
-            logging.warning(f"No new records to send for strategy_id={self.strategy_id}")
-            return
-        if self.send_data:
-            logging.info(f"Sending {len(send_states)} trading state records for strategy_id={self.strategy_id}. CP = {send_from_cp}")
-            for record in self.trading_states[send_from_cp:]:
-                record_str = record.to_json_str()
-                self.producer.produce(
-                    self.kafka_history_state_topic,
-                    key=self.strategy_id,
-                    value=record_str,
-                    callback=delivery_report
-                )
-            # Send latest state (current state)
-            self.__send_state__()
-            self.producer.flush()
-        else:
-            logging.info(f"send_data is False, skipping sending trading states for strategy_id={self.strategy_id}. CP = {send_from_cp}")
 
     def run(self):
         # Setup fields
@@ -321,14 +309,14 @@ class StrategyRunner(ABC):
         if len(self.datas) == 0:
             raise RuntimeError(f"No data loaded for symbol={self.symbol} from {self.run_from}")
 
-        self.ht_prices = self.datas["Close"].tolist()
-        self.ht_times = self.datas.index.tolist()
+        self.prices = self.datas["Close"].tolist()
+        self.times = self.datas.index.tolist()
         # init the current state
         self.current_state = StrategyState(
             strategy_id=self.strategy_id,
             symbol=self.symbol,
             symbol_type=self.symbol_type,
-            candle=self.ht_times[0],
+            candle=self.times[0],
             run_from=self.run_from,
             run_to=self.run_to,
             current_price=0.0,
@@ -346,7 +334,6 @@ class StrategyRunner(ABC):
             engine=self.run_engine,
             book_size=self.init_cash,
         )  # Init the start state
-        self.trading_states = []  # And init the historical
         # Check if has run before
         logging.info(f"Loaded {len(self.datas)} rows of data for symbol={self.symbol}")
         # Execute the expression to get signals
@@ -354,8 +341,8 @@ class StrategyRunner(ABC):
         if isinstance(self.signals, (np.ndarray, pd.Series)):
             self.signals = self.signals.tolist()
         # Check length
-        if len(self.signals) != len(self.ht_prices):
-            raise RuntimeError(f"Signal length {len(self.signals)} != price length {len(self.ht_prices)}")
+        if len(self.signals) != len(self.prices):
+            raise RuntimeError(f"Signal length {len(self.signals)} != price length {len(self.prices)}")
 
         # Step through each signal (buy/sell/hold) and simulate trading
         for time_idx in range(len(self.signals)):
@@ -366,7 +353,7 @@ class StrategyRunner(ABC):
 
     def stats(self):
         return {
-            "total_trades": len([s for s in self.trading_states if s.current_action != AllowedAction.Hold]),
+            "total_trades": len([s for s in self.ht_trade_sizes if s > 0]),
             "final_position": self.current_state.current_position,
             "final_weight": self.current_state.current_weight,
             "final_price": self.current_state.current_price,

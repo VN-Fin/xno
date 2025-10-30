@@ -1,5 +1,3 @@
-from dataclasses import dataclass
-
 from xno import settings
 from xno.backtest import StrategyTradeSummary
 from xno.basic_type import NumericType
@@ -8,8 +6,9 @@ import pandas as pd
 from xno.backtest.cal.anl import get_trade_analysis_metrics
 from xno.backtest.cal.pf import get_performance_metrics
 from xno.backtest.cal.rt import get_returns_stock, get_returns_derivative
-from typing import List, Optional
-from xno.trade.state import StrategyState
+from typing import Optional
+
+from xno.trade import BacktestInput
 from xno.trade.tp import AllowedSymbolType
 
 from xno.backtest.pf import TradePerformance
@@ -18,14 +17,10 @@ from xno.backtest.analysis import TradeAnalysis
 
 class BacktestCalculator:
     
-    def __init__(self, trading_states: List[StrategyState]):
-        if not trading_states:
-            raise ValueError("trading_states cannot be empty")
-            
-        self.trading_states = trading_states
-        self.strategy_id = trading_states[0].strategy_id
-        self.init_cash = float(trading_states[0].book_size)
-        self.symbol_type = trading_states[0].symbol_type
+    def __init__(self, inp: BacktestInput):
+        self.strategy_id = inp.strategy_id
+        self.init_cash = inp.book_size
+        self.symbol_type = inp.symbol_type
         # Determine fee rate based on symbol type
         self.fee_rate: NumericType = 0.0
         if self.symbol_type == AllowedSymbolType.Stock:
@@ -36,10 +31,10 @@ class BacktestCalculator:
             raise ValueError(f"Unknown symbol type: {self.symbol_type}, do not support backtest calculator")
 
         # Extracted data
-        self.times: np.ndarray = np.array([])
-        self.prices: np.ndarray = np.array([])
-        self.positions: np.ndarray = np.array([])
-        self.trade_sizes: np.ndarray = np.array([])
+        self.times: np.ndarray = inp.times
+        self.prices: np.ndarray = inp.prices
+        self.positions: np.ndarray = inp.positions
+        self.trade_sizes: np.ndarray = inp.trade_sizes
         
         # Calculated metrics
         self.pnl: np.ndarray = np.array([]) # not cumsum
@@ -51,25 +46,7 @@ class BacktestCalculator:
         self.performance: Optional[TradePerformance] = None
         self.trade_analysis: Optional[TradeAnalysis] = None
         self.states_df = pd.DataFrame()
-        
-        # Extract data from trading states
-        self._extract_data()
-        
-    def _extract_data(self):
-        """Extract relevant data from trading states."""
-        # Use pandas to extract data without any loops
-        if isinstance(self.trading_states[0], dict):
-            self.states_df = pd.DataFrame(self.trading_states)
-        else:
-            self.states_df = pd.DataFrame([s.model_dump() for s in self.trading_states])
-        # Set datatype conversions if necessary
-        self.states_df['candle'] = pd.to_datetime(self.states_df['candle'])
-        # Extract data using vectorized operations and convert to numpy arrays
-        self.times = self.states_df['candle'].values
-        self.prices = self.states_df['current_price'].values
-        self.positions = self.states_df['current_position'].values
-        self.trade_sizes = self.states_df['trade_size'].values
-    
+
     def calculate_returns(self) -> pd.Series:
         """
         Calculate returns based on symbol type (stock vs derivative).

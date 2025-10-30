@@ -16,9 +16,10 @@ class DerivativeRunner(StrategyRunner):
             self,
             strategy_id: str,
             mode: AllowedTradeMode | int,
-            re_run: bool = False,
+            re_run: bool,
+            send_data: bool,
     ):
-        super().__init__(strategy_id, mode, re_run)
+        super().__init__(strategy_id, mode, re_run, send_data)
         self.max_contracts = self.init_cash // 25_000_000  # Fixed for derivatives
 
     @abstractmethod
@@ -36,8 +37,8 @@ class DerivativeRunner(StrategyRunner):
         4. Position size = current_weight * max_contracts
         """
         self.current_state.current_action = AllowedAction.Hold
-        current_price = self.ht_prices[time_idx]
-        current_time = self.ht_times[time_idx]
+        current_price = self.prices[time_idx]
+        current_time = self.times[time_idx]
         if current_time < self.run_to:
             self.checkpoint_idx = time_idx
 
@@ -79,8 +80,12 @@ class DerivativeRunner(StrategyRunner):
             f"Position={self.current_state.current_position:.2f}, "
             f"Weight={self.current_state.current_weight:.2f}"
         )
+        # Update history
+        self.ht_trade_sizes.append(self.current_state.trade_size)
+        self.ht_positions.append(self.current_state.current_position)
+        self.ht_prices.append(self.current_state.current_price)
+        self.ht_times.append(self.current_state.candle)
 
-        self.trading_states.append(self.current_state.model_copy(deep=True))
 
 
 if __name__ == "__main__":
@@ -88,7 +93,7 @@ if __name__ == "__main__":
         def __generate_signal__(self) -> List[float]:
             # Example: Generate random signals for demonstration
             import numpy as np
-            return np.random.uniform(-1, 1, size=len(self.ht_prices)).tolist()
+            return np.random.uniform(-1, 1, size=len(self.prices)).tolist()
 
         def __load_data__(self):
             # Example: Load dummy data for demonstration

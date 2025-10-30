@@ -32,8 +32,8 @@ class StockRunner(StrategyRunner):
         6. If conditions for selling are not met, the signal is ignored until eligible.
         """
         self.current_state.current_action = AllowedAction.Hold
-        current_price = self.ht_prices[time_idx]  # Get the current price from the history prices]
-        current_time = self.ht_times[time_idx]   # Current day from the timestamp
+        current_price = self.prices[time_idx]  # Get the current price from the history prices]
+        current_time = self.times[time_idx]   # Current day from the timestamp
         if current_time < self.run_to:
             self.checkpoint_idx = time_idx
         # The signal unverified, which is the current signal at the current time index
@@ -42,7 +42,7 @@ class StockRunner(StrategyRunner):
         current_max_shares = round_to_lot(self.init_cash // current_price, self._lot_size)
 
         # Calculate day difference AND update T0, T1, T2 positions based on the previous day
-        prev_time = self.ht_times[time_idx - 1]  if time_idx > 0 else current_time  # Previous day for the first iteration
+        prev_time = self.times[time_idx - 1]  if time_idx > 0 else current_time  # Previous day for the first iteration
         day_diff = (current_time - prev_time).days
         if day_diff > 0:
             logging.debug(
@@ -103,7 +103,11 @@ class StockRunner(StrategyRunner):
         self.current_state.candle = current_time
         self.current_state.trade_size = current_trade_size
         self.current_time_idx = time_idx
-        self.trading_states.append(self.current_state.model_copy(deep=True))
+        # Update history
+        self.ht_trade_sizes.append(self.current_state.trade_size)
+        self.ht_positions.append(self.current_state.current_position)
+        self.ht_prices.append(self.current_state.current_price)
+        self.ht_times.append(self.current_state.candle)
 
 
 if __name__ == "__main__":
@@ -111,7 +115,7 @@ if __name__ == "__main__":
         def __generate_signal__(self) -> List[float]:
             # Example: Generate random signals for demonstration
             import numpy as np
-            return np.random.uniform(-1, 1, size=len(self.ht_prices)).tolist()
+            return np.random.uniform(-1, 1, size=len(self.prices)).tolist()
 
         def __load_data__(self):
             # Example: Load dummy data for demonstration

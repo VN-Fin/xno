@@ -73,7 +73,7 @@ class BacktestCalculator:
         # using for trade analysis
         self.equity_curve = results.equity_curve
         self.pnl = results.pnl
-
+        self.fees = results.fees
         # Build state_history as dict-of-lists
         # using for visualization
         self.state_history = {
@@ -109,7 +109,7 @@ class BacktestCalculator:
         self.trade_analysis = get_trade_analysis_metrics(
             equity_curve=self.equity_curve,
             trade_returns=self.returns,
-            fees=self.fee_rate,
+            fees=self.fees,
             trade_sizes=self.trade_sizes,
             pnl=self.pnl,
         )

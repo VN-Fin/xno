@@ -5,7 +5,7 @@ import numpy as np
 def get_trade_analysis_metrics(
     equity_curve: np.ndarray,
     trade_returns: np.ndarray,
-    fees: float,
+    fees: np.ndarray,
     pnl: np.ndarray,
     trade_sizes: np.ndarray,
 ) -> TradeAnalysis:
@@ -15,7 +15,7 @@ def get_trade_analysis_metrics(
     end_value = float(equity_curve[-1])
     total_return = (end_value - start_value) / start_value
 
-    total_fee = float(np.sum(fees)) if isinstance(fees, (list, np.ndarray)) else float(fees)
+    total_fee = np.sum(fees)
 
     # === 2. Trade-level statistics ===
     total_trades = len(trade_sizes[trade_sizes != 0])

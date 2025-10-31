@@ -1,35 +1,16 @@
 import logging
 import uuid
-from typing import Any, Iterable
+from typing import Iterable
 
 from cachetools.func import ttl_cache
-from pydantic import BaseModel
 from sqlalchemy import text
 
 from xno import settings
 from xno.connectors.semaphore import DistributedSemaphore
 from xno.connectors.sql import SqlSession
-from xno.trade.tp import AllowedTradeMode, AllowedEngine
+from xno.models import AdvancedConfig, StrategyConfig
+from xno.models.tp import AllowedTradeMode, AllowedEngine
 from contextlib import ExitStack
-
-
-class AdvancedConfig(BaseModel):
-    expression: str = ""
-    close_on_end_day: bool = False
-    use_trailing_stop: bool = False
-    trailing_stop_pct: float = 0
-
-class StrategyConfig(BaseModel):
-    strategy_id: str
-    symbol: str
-    symbol_type: str
-    timeframe: str
-    init_cash: float
-    run_from: Any
-    run_to: Any
-    mode: AllowedTradeMode
-    advanced_config: AdvancedConfig
-    engine: str
 
 class StrategyConfigLoader:
     @classmethod

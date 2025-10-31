@@ -3,7 +3,7 @@ from abc import abstractmethod
 from typing import List
 
 from xno.strategy.strategy_runner import StrategyRunner
-from xno.trade import (
+from xno.models import (
     AllowedAction, AllowedTradeMode,
 )
 import logging

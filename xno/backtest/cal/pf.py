@@ -1,6 +1,6 @@
 import pandas as pd
 
-from xno.trade.pf import TradePerformance
+from xno.models.pf import TradePerformance
 import quantstats as qs
 
 def get_performance_metrics(returns: pd.Series) -> TradePerformance:

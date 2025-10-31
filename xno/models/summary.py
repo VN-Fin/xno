@@ -2,8 +2,8 @@ from typing import Dict, List, Any
 
 from pydantic import BaseModel, Field
 
-from xno.trade.analysis import TradeAnalysis
-from xno.trade.pf import TradePerformance
+from xno.models.analysis import TradeAnalysis
+from xno.models.pf import TradePerformance
 from xno.basic_type import DateTimeType, NumericType
 
 

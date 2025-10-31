@@ -2,10 +2,12 @@ from dataclasses import dataclass
 import numpy as np
 from typing import List, AnyStr
 
+from xno.models import AllowedTradeMode
+
 
 @dataclass
 class BacktestInput:
-    bt_mode: str
+    bt_mode: AllowedTradeMode | str
     strategy_id: str
     re_run: bool
     book_size: float

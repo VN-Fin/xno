@@ -1,5 +1,5 @@
 from xno import settings
-from xno.trade import AllowedTradeMode
+from xno.models import AllowedTradeMode
 
 
 def generate_latest_signal_key(mode: AllowedTradeMode | int) -> str:

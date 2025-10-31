@@ -1,4 +1,4 @@
-from xno.trade.analysis import TradeAnalysis
+from xno.models.analysis import TradeAnalysis
 import numpy as np
 
 

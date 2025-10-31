@@ -5,8 +5,8 @@ from typing import List
 
 from xno.data.ohlcv import OhlcvDataManager
 from xno.strategy.strategy_runner import StrategyRunner
-from xno.trade import (
-    AllowedAction, AllowedTradeMode, StrategyConfigLoader,
+from xno.models import (
+    AllowedAction, StrategyConfig, AllowedSymbolType, AdvancedConfig, AllowedEngine,
 )
 import logging
 
@@ -108,7 +108,7 @@ class StockRunner(StrategyRunner):
 
 if __name__ == "__main__":
     from xno.data import Fields
-    from xno.trade import AllowedTradeMode
+    from xno.models import AllowedTradeMode
 
 
     # Test class for demonstrating add_field and load_data functionality
@@ -133,28 +133,23 @@ if __name__ == "__main__":
             return self.datas
 
 
-    # Create a mock config class for testing
-    class MockConfig:
-        def __init__(self):
-            from xno.trade import AllowedSymbolType
-            from xno.trade import AllowedEngine
+    strategy_config = StrategyConfig(
+        strategy_id="test",
+        symbol="SSI",
+        symbol_type=AllowedSymbolType.Stock,
+        timeframe="D",
+        init_cash=1000000000,
+        run_from="2023-01-01",
+        run_to="2024-12-31",
+        mode=AllowedTradeMode.BackTrade,
+        advanced_config=AdvancedConfig(),
+        engine=AllowedEngine.TABot,
 
-            self.run_from = "2020-01-01"
-            self.run_to = "2025-12-31"
-            self.symbol = "AAA"
-            self.timeframe = "D"
-            self.init_cash = 1e9
-            self.engine = AllowedEngine.TABot
-            self.symbol_type = AllowedSymbolType.Stock
-
-    # Mock the config loader
-    original_get_config = StrategyConfigLoader.get_config
-    StrategyConfigLoader.get_config = lambda strategy_id, mode: MockConfig()
+    )
 
     try:
         runner = TestStrategyRunner(
-            strategy_id="test_strategy",
-            mode=AllowedTradeMode.BackTrade,
+            config=strategy_config,
             re_run=True,
             send_data=False,
         )

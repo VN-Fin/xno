@@ -1,7 +1,7 @@
 import pandas as pd
 
 from xno import settings
-from xno.trade import StrategyTradeSummary
+from xno.models import StrategyTradeSummary
 from xno.basic_type import NumericType
 import numpy as np
 from xno.backtest.cal.anl import get_trade_analysis_metrics
@@ -9,11 +9,11 @@ from xno.backtest.cal.pf import get_performance_metrics
 from xno.backtest.cal.rt import get_returns_stock, get_returns_derivative
 from typing import Optional
 
-from xno.trade import BacktestInput
-from xno.trade.tp import AllowedSymbolType
+from xno.models import BacktestInput
+from xno.models.tp import AllowedSymbolType
 
-from xno.trade.pf import TradePerformance
-from xno.trade.analysis import TradeAnalysis
+from xno.models.pf import TradePerformance
+from xno.models.analysis import TradeAnalysis
 from typing import Dict, List, Any
 
 class BacktestCalculator:

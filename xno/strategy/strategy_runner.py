@@ -4,14 +4,12 @@ from typing import List, Dict, Optional
 from confluent_kafka import Producer
 
 from xno import settings
-from xno.trade import StrategyTradeSummary
+from xno.models import StrategyTradeSummary, StrategyConfig, AllowedSymbolType, AdvancedConfig
 from xno.connectors.rd import RedisClient
-from xno.trade import (
-    AllowedTradeMode,
+from xno.models import (
     StrategyState,
     StrategySignal,
     AllowedAction,
-    StrategyConfigLoader,
     FieldInfo, AllowedEngine,
 )
 import pandas as pd
@@ -19,7 +17,7 @@ import logging
 import xno.utils.keys as ukeys
 import numpy as np
 
-from xno.trade.backtest import BacktestInput
+from xno.models.backtest import BacktestInput
 from xno.utils.stream import delivery_report
 from xno.data.all_data_final import AllData
 import threading
@@ -41,38 +39,17 @@ class StrategyRunner(ABC):
     """
     def __init__(
             self,
-            strategy_id: str,
-            mode: AllowedTradeMode | int,
+            config: StrategyConfig,
             re_run: bool,
             send_data: bool,
     ):
         """
         Initialize the StrategyRunner.
-        :param strategy_id:
-        :param mode:
+        :param config:
         :param re_run: re-run or continue from last checkpoint. If re-run, all data will be sent again.
         :param send_data: whether to send data to Kafka/Redis
         """
-        self.send_data = send_data
-        self.producer = get_producer()
-        self.redis_latest_signal_key = ukeys.generate_latest_signal_key(mode)
-        self.redis_latest_state_key = ukeys.generate_latest_state_key(mode)
-        self.kafka_latest_signal_topic = ukeys.generate_latest_signal_topic(mode)
-        self.kafka_latest_state_topic = ukeys.generate_latest_state_topic(mode)
-        self.kafka_history_state_topic = ukeys.generate_history_state_topic(mode)
-        self.checkpoint_idx = 0
-        self.strategy_id = strategy_id
-        self.mode = mode
-        self.re_run = re_run
-        self.symbol = ""
-        self.symbol_type = ""
-        self.timeframe = ""
-        self.init_cash = 0.0
-        self.run_engine: str = ""
-        self.run_from: pd.Timestamp = pd.Timestamp.now()
-        self.run_to: pd.Timestamp = pd.Timestamp.now()
-        self.datas: pd.DataFrame = pd.DataFrame()
-        self.cfg = StrategyConfigLoader.get_config(self.strategy_id, self.mode)
+        self.cfg = config
         if self.cfg is None:
             raise RuntimeError(f"Strategy config not found for strategy_id={self.strategy_id} and mode={self.mode}")
         else:
@@ -83,6 +60,19 @@ class StrategyRunner(ABC):
             self.init_cash = self.cfg.init_cash
             self.run_engine = self.cfg.engine
             self.symbol_type = self.cfg.symbol_type
+            self.strategy_id = config.strategy_id
+            self.mode = config.mode
+
+        self.send_data = send_data
+        self.producer = get_producer()
+        self.redis_latest_signal_key = ukeys.generate_latest_signal_key(self.mode)
+        self.redis_latest_state_key = ukeys.generate_latest_state_key(self.mode)
+        self.kafka_latest_signal_topic = ukeys.generate_latest_signal_topic(self.mode)
+        self.kafka_latest_state_topic = ukeys.generate_latest_state_topic(self.mode)
+        self.kafka_history_state_topic = ukeys.generate_history_state_topic(self.mode)
+        self.checkpoint_idx = 0
+        self.re_run = re_run
+        self.datas: pd.DataFrame = pd.DataFrame()
 
         self.current_state: StrategyState | None = None
         self.pending_sell_pos = 0.0
@@ -410,7 +400,7 @@ class StrategyRunner(ABC):
 
 if __name__ == "__main__":
     from xno.data import Fields
-    from xno.trade import AllowedTradeMode
+    from xno.models import AllowedTradeMode
 
 
     # Test class for demonstrating add_field and load_data functionality
@@ -428,27 +418,23 @@ if __name__ == "__main__":
             pass
 
 
-    # Create a mock config class for testing
-    class MockConfig:
-        def __init__(self):
-            from xno.trade import AllowedSymbolType
+    strategy_config = StrategyConfig(
+        strategy_id="test",
+        symbol="SSI",
+        symbol_type=AllowedSymbolType.Stock,
+        timeframe="D",
+        init_cash=1000000000,
+        run_from="2023-01-01",
+        run_to="2024-12-31",
+        mode=AllowedTradeMode.BackTrade,
+        advanced_config=AdvancedConfig(),
+        engine=AllowedEngine.TABot,
 
-            self.run_from = "2023-01-01"
-            self.run_to = "2024-12-31"
-            self.symbol = "SSI"
-            self.timeframe = "D"
-            self.init_cash = 1000000000
-            self.engine = AllowedEngine.TABot
-            self.symbol_type = AllowedSymbolType.Stock
-
-    # Mock the config loader
-    original_get_config = StrategyConfigLoader.get_config
-    StrategyConfigLoader.get_config = lambda strategy_id, mode: MockConfig()
+    )
 
     try:
         runner = TestStrategyRunner(
-            strategy_id="test_strategy",
-            mode=AllowedTradeMode.BackTrade,
+            config=strategy_config,
             re_run=False,
             send_data=False,
         )

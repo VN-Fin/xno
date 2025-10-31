@@ -5,21 +5,21 @@ from typing import List
 from xno.strategy.strategy_runner import StrategyRunner
 from xno.models import (
     AllowedAction, AllowedTradeMode,
+    AdvancedConfig, AllowedEngine,
+    StrategyConfig, AllowedSymbolType,
 )
 import logging
 from xno.utils.stock import round_to_lot
-
 
 class DerivativeRunner(StrategyRunner):
     _lot_size = 1  # Derivatives typically trade in units of 1 contract
     def __init__(
             self,
-            strategy_id: str,
-            mode: AllowedTradeMode | int,
+            config: StrategyConfig,
             re_run: bool,
             send_data: bool,
     ):
-        super().__init__(strategy_id, mode, re_run, send_data)
+        super().__init__(config, re_run, send_data)
         self.max_contracts = self.init_cash // 25_000_000  # Fixed for derivatives
 
     @abstractmethod
@@ -99,16 +99,22 @@ if __name__ == "__main__":
             self.datas = pd.DataFrame({'Close': prices})
 
     # Example usage
-    runner = CustomDerivativeRunner(
+    config = StrategyConfig(
         strategy_id="fad40f3b-52a7-44d1-99cb-8d4b5aa257c5",
-        mode=AllowedTradeMode.LiveTrade,
-        re_run=False,
-        send_data=True
+        symbol="VN30F1M",
+        symbol_type=AllowedSymbolType.Derivative,
+        timeframe="5min",
+        init_cash=500_000_000,
+        run_from="2025-01-01 09:00:00",
+        run_to="2025-08-31 15:00:00",
+        mode=AllowedTradeMode.BackTrade,
+        advanced_config=AdvancedConfig(),
+        engine=AllowedEngine.XQuant
     )
-    runner.add_field(
-        "Volume", "Volume"
-    ).add_field(
-        "VN30Volume", "Volume", ticker="VN30"
+    runner = CustomDerivativeRunner(
+        config=config,
+        re_run=False,
+        send_data=True,
     )
     runner.run()
     print(runner.stats())

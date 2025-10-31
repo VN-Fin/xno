@@ -16,7 +16,13 @@ from xno.utils.stock import round_to_lot
 class StockRunner(StrategyRunner):
     _hold_days = timedelta(days=3)
     _lot_size = 100
-
+    def __init__(
+            self,
+            config: StrategyConfig,
+            re_run: bool,
+            send_data: bool,
+    ):
+        super().__init__(config, re_run, send_data)
     @abstractmethod
     def __generate_signal__(self) -> List[float]:
         raise NotImplementedError("Implement in subclass to generate signals.")

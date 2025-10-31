@@ -56,13 +56,11 @@ def get_returns_stock(
     fees_cum = np.cumsum(fees)
     equity = init_cash + pnl_cum - fees_cum
 
-    # ✅ tránh chia cho 0
     returns = np.zeros_like(equity)
     returns[1:] = _safe_divide(equity[1:] - equity[:-1], equity[:-1])
 
     cumret = _compound_returns(returns)
 
-    # ✅ trả về dạng Series, có index = times
     returns = pd.Series(returns, index=pd.to_datetime(times))
 
     bm_equity = (init_cash / prices[0]) * prices
@@ -119,7 +117,7 @@ def get_returns_derivative(
     cumret = _compound_returns(returns)
     returns = pd.Series(returns, index=pd.to_datetime(times))
 
-    bm_pnl = np.cumsum(price_diff * 100_000)
+    bm_pnl = np.cumsum(price_diff * (init_cash / prices[0]) * 100_000)
     bm_equity = init_cash + bm_pnl
     bm_returns = np.zeros_like(bm_equity)
     bm_returns[1:] = _safe_divide(bm_equity[1:] - bm_equity[:-1], bm_equity[:-1])

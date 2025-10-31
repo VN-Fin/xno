@@ -22,6 +22,8 @@ from xno.utils.stream import delivery_report
 from xno.data.all_data_final import AllData
 import threading
 
+from xno.models import AllowedTradeMode
+
 
 _local = threading.local()
 
@@ -400,7 +402,6 @@ class StrategyRunner(ABC):
 
 if __name__ == "__main__":
     from xno.data import Fields
-    from xno.models import AllowedTradeMode
 
 
     # Test class for demonstrating add_field and load_data functionality

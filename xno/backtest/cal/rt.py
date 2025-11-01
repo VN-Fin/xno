@@ -25,13 +25,19 @@ def _compound_returns(returns: np.ndarray) -> np.ndarray:
     return np.cumprod(1 + returns) - 1
 
 
+def _safe_divide(numer, denom, eps=1e-12):
+    """Chia an toàn: nếu denom = 0 thì thay bằng eps."""
+    denom_safe = np.where(denom == 0, eps, denom)
+    return numer / denom_safe
+
+
 def get_returns_stock(
-        init_cash,
-        times,
-        prices,
-        positions,
-        trade_sizes,
-        fee_rate=0.0015  # 0.15%
+    init_cash,
+    times,
+    prices,
+    positions,
+    trade_sizes,
+    fee_rate=0.0015  # 0.15%
 ) -> BacktestResult:
 
     if not (len(times) == len(prices) == len(positions) == len(trade_sizes)):
@@ -51,15 +57,15 @@ def get_returns_stock(
     equity = init_cash + pnl_cum - fees_cum
 
     returns = np.zeros_like(equity)
-    returns[1:] = (equity[1:] - equity[:-1]) / equity[:-1]
+    returns[1:] = _safe_divide(equity[1:] - equity[:-1], equity[:-1])
 
     cumret = _compound_returns(returns)
 
-    # returns = pd.Series(returns, index=pd.to_datetime(times))
+    returns = pd.Series(returns, index=pd.to_datetime(times))
 
     bm_equity = (init_cash / prices[0]) * prices
     bm_returns = np.zeros_like(bm_equity)
-    bm_returns[1:] = (bm_equity[1:] - bm_equity[:-1]) / bm_equity[:-1]
+    bm_returns[1:] = _safe_divide(bm_equity[1:] - bm_equity[:-1], bm_equity[:-1])
     bm_cumret = _compound_returns(bm_returns)
     bm_pnl = bm_equity - init_cash
 
@@ -81,12 +87,12 @@ def get_returns_stock(
 
 
 def get_returns_derivative(
-        init_cash,
-        times,
-        prices,
-        positions,
-        trade_sizes,
-        fee_rate=20_000
+    init_cash,
+    times,
+    prices,
+    positions,
+    trade_sizes,
+    fee_rate=20_000
 ) -> BacktestResult:
 
     if not (len(times) == len(prices) == len(positions) == len(trade_sizes)):
@@ -106,16 +112,15 @@ def get_returns_derivative(
     equity = init_cash + pnl_cum - fees_cum
 
     returns = np.zeros_like(equity)
-    returns[1:] = (equity[1:] - equity[:-1]) / equity[:-1]
+    returns[1:] = _safe_divide(equity[1:] - equity[:-1], equity[:-1])
 
     cumret = _compound_returns(returns)
+    returns = pd.Series(returns, index=pd.to_datetime(times))
 
-    # returns = pd.Series(returns, index=pd.to_datetime(times))
-
-    bm_pnl = np.cumsum(price_diff * 100_000)
+    bm_pnl = np.cumsum(price_diff * (init_cash / prices[0]) * 100_000)
     bm_equity = init_cash + bm_pnl
     bm_returns = np.zeros_like(bm_equity)
-    bm_returns[1:] = (bm_equity[1:] - bm_equity[:-1]) / bm_equity[:-1]
+    bm_returns[1:] = _safe_divide(bm_equity[1:] - bm_equity[:-1], bm_equity[:-1])
     bm_cumret = _compound_returns(bm_returns)
 
     return BacktestResult(

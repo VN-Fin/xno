@@ -3,7 +3,6 @@ from abc import abstractmethod
 from datetime import timedelta
 from typing import List
 
-from xno.data.ohlcv import OhlcvDataManager
 from xno.strategy.strategy_runner import StrategyRunner
 from xno.models import (
     AllowedAction, StrategyConfig, AllowedSymbolType, AdvancedConfig, AllowedEngine,
@@ -129,6 +128,8 @@ if __name__ == "__main__":
 
         def __load_data__(self):
             # Override to load OHLCV data for testing
+            from xno.data.ohlcv import OhlcvDataManager
+
             self.datas = OhlcvDataManager.get(
                 resolution=self.timeframe,
                 symbol=self.symbol,

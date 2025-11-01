@@ -2,6 +2,8 @@ import dataclasses
 import numpy as np
 import pandas as pd
 
+from xno.utils.stock import round_to_lot
+
 
 @dataclasses.dataclass
 class BacktestResult:
@@ -117,7 +119,8 @@ def get_returns_derivative(
     cumret = _compound_returns(returns)
     returns = pd.Series(returns, index=pd.to_datetime(times))
 
-    bm_pnl = np.cumsum(price_diff * (init_cash / prices[0]) * 100_000)
+    max_contracts = round_to_lot(init_cash / 25_000_000, 1)
+    bm_pnl = np.cumsum(price_diff * max_contracts * 100_000)
     bm_equity = init_cash + bm_pnl
     bm_returns = np.zeros_like(bm_equity)
     bm_returns[1:] = _safe_divide(bm_equity[1:] - bm_equity[:-1], bm_equity[:-1])

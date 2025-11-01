@@ -91,12 +91,19 @@ if __name__ == "__main__":
             return np.random.uniform(-1, 1, size=len(self.prices)).tolist()
 
         def __load_data__(self):
-            # Example: Load dummy data for demonstration
-            import pandas as pd
-            import numpy as np
-            dates = pd.date_range(start="2024-01-01", periods=100, freq='D')
-            prices = pd.Series(100 + np.random.randn(100).cumsum(), index=dates)
-            self.datas = pd.DataFrame({'Close': prices})
+            # Override to load OHLCV data for testing
+            from xno.data.ohlcv import OhlcvDataManager
+
+            self.datas = OhlcvDataManager.get(
+                resolution=self.timeframe,
+                symbol=self.symbol,
+                from_time=self.run_from,
+                to_time=self.run_to,
+                factor=1,
+            )
+            return self.datas
+
+
 
     # Example usage
     config = StrategyConfig(
@@ -117,4 +124,6 @@ if __name__ == "__main__":
         send_data=True,
     )
     runner.run()
-    print(runner.stats())
+    logging.info(f"Run stats: {runner.stats()}")
+    logging.info(f"Backtest: {runner.backtest()}")
+    runner.visualize()

@@ -138,21 +138,21 @@ class StrategyVisualizer:
         last_row = df.iloc[-1]
         fig.add_trace(go.Scatter(
             x=[last_row.name], y=[last_row['cumret']],
-            mode='text', text=[f" - {last_row['cumret']:.2f}"],
+            mode='text', text=[f" -> {last_row['cumret']:.2f}"],
             textposition='middle right',
             textfont=dict(color='blue', size=12), showlegend=False
         ), row=1, col=1)
 
         fig.add_trace(go.Scatter(
             x=[last_row.name], y=[last_row['bm_cumret']],
-            mode='text', text=[f" - {last_row['bm_cumret']:.2f}"],
+            mode='text', text=[f" -> {last_row['bm_cumret']:.2f}"],
             textposition='middle right',
             textfont=dict(color='gray', size=12), showlegend=False
         ), row=1, col=1)
 
         fig.add_trace(go.Scatter(
             x=[last_row.name], y=[last_row['prices']],
-            mode='text', text=[f" - {last_row['prices']:.2f}"],
+            mode='text', text=[f" -> {last_row['prices']:.2f}"],
             textposition='middle right',
             textfont=dict(color='black', size=12), showlegend=False
         ), row=2, col=1)

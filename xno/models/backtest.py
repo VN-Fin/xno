@@ -7,7 +7,7 @@ from xno.models import AllowedTradeMode
 
 @dataclass
 class BacktestInput:
-    bt_mode: AllowedTradeMode | str
+    bt_mode: AllowedTradeMode | int
     strategy_id: str
     re_run: bool
     book_size: float

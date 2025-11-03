@@ -10,11 +10,15 @@ backend_url = f"redis://{auth_part}{settings.redis_host}:{settings.redis_port}/{
 
 class CeleryQueueNames:
     BACKTEST = "backtest_queue"
-    STRATEGY = "strategy_queue"
+    TA_STRATEGY = "ta_strategy_queue"
+    AI_STRATEGY = "ai_strategy_queue"
+    QUANT_STRATEGY = "quant_strategy_queue"
 
 class CeleryTaskGroups:
     BACKTEST = "backtest_worker"
-    STRATEGY = "strategy_worker"
+    TA_STRATEGY = "ta_strategy_worker"
+    AI_STRATEGY = "ai_strategy_worker"
+    QUANT_STRATEGY = "quant_strategy_worker"
 
 capp = Celery(
     broker=broker_url,
@@ -22,11 +26,15 @@ capp = Celery(
 )
 capp.conf.task_queues = (
     Queue(CeleryQueueNames.BACKTEST),
-    Queue(CeleryQueueNames.STRATEGY),
+    Queue(CeleryQueueNames.TA_STRATEGY),
+    Queue(CeleryQueueNames.AI_STRATEGY),
+    Queue(CeleryQueueNames.QUANT_STRATEGY),
 )
 capp.conf.task_routes = {
     f"{CeleryTaskGroups.BACKTEST}.*": {"queue": CeleryQueueNames.BACKTEST},
-    f"{CeleryTaskGroups.STRATEGY}.*": {"queue": CeleryQueueNames.STRATEGY},
+    f"{CeleryTaskGroups.TA_STRATEGY}.*": {"queue": CeleryQueueNames.TA_STRATEGY},
+    f"{CeleryTaskGroups.AI_STRATEGY}.*": {"queue": CeleryQueueNames.AI_STRATEGY},
+    f"{CeleryTaskGroups.QUANT_STRATEGY}.*": {"queue": CeleryQueueNames.QUANT_STRATEGY},
 }
 capp.conf.update(
     task_serializer="json",

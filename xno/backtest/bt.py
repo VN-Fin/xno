@@ -77,20 +77,20 @@ class BacktestCalculator:
         # Build state_history as dict-of-lists
         # using for visualization
         self.state_history = {
-            'candle': self.times,
+            'candles': self.times,
             'prices': self.prices,
             'actions': self.actions,
-            'position': self.positions,
+            'positions': self.positions,
             'trade_sizes': self.trade_sizes,
             'returns': results.returns,
-            'pnl': results.pnl,
-            'cumret': results.cumret,
-            'balance': results.equity_curve,
+            'pnls': results.pnl,
+            'cumrets': results.cumret,
+            'balances': results.equity_curve,
             'fees': results.fees,
             'bm_returns': results.bm_returns,
-            'bm_pnl': results.bm_pnl,
-            'bm_cumret': results.bm_cumret,
-            'bm_balance': results.bm_equities,
+            'bm_pnls': results.bm_pnl,
+            'bm_cumrets': results.bm_cumret,
+            'bm_balances': results.bm_equities,
         }
 
     def calculate_performance_metrics(self) -> TradePerformance:

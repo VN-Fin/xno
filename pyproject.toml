@@ -5,6 +5,7 @@ description = "Add your description here"
 requires-python = ">=3.13"
 dependencies = [
     "cachetools>=6.2.1",
+    "celery>=5.5.3",
     "confluent-kafka>=2.11.1",
     "dotenv>=0.9.9",
     "ipython>=9.6.0",

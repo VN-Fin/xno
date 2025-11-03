@@ -1,7 +1,7 @@
 import pandas as pd
 
 from xno import settings
-from xno.models import StrategyTradeSummary
+from xno.models import StrategyTradeSummary, AllowedTradeMode
 from xno.basic_type import NumericType
 import numpy as np
 from xno.backtest.cal.anl import get_trade_analysis_metrics
@@ -119,13 +119,14 @@ class BacktestCalculator:
         if self.returns is None:
             self.calculate_returns()  # Make sure data is ready
         return StrategyTradeSummary(
+            strategy_id=self.strategy_id,
             init_cash=self.init_cash,
             from_time=self.times[0].__str__(),
             to_time=self.times[-1].__str__(),
             analysis=self.calculate_trade_analysis(),
             performance=self.calculate_performance_metrics(),
             state_history=self.state_history,
-            bt_mode=self.bt_mode
+            bt_mode=self.bt_mode if isinstance(self.bt_mode, AllowedTradeMode) else AllowedTradeMode(self.bt_mode)
         )
     
     

@@ -161,6 +161,7 @@ if __name__ == "__main__":
             send_data=False,
         )
         runner.run()
+        runner.send_backtest_task()
         logging.info(f"Run stats: {runner.stats()}")
         logging.info(f"Backtest: {runner.backtest()}")
         runner.visualize()

@@ -379,14 +379,14 @@ class StrategyRunner(ABC):
         Use this function to send backtest task to celery worker.
         :return: None
         """
-        from xno.tasks import capp, CeleryQueueNames
+        from xno.tasks import capp, CeleryTaskGroups
         import pickle
         import uuid
 
         bt_input = self.get_backtest_input()
         bt_input_bytes = pickle.dumps(bt_input)
         sig = capp.signature(
-            f"{CeleryQueueNames.BACKTEST}.run_backtest",
+            f"{CeleryTaskGroups.BACKTEST}.run_backtest",
             args=(bt_input_bytes, ),
         )
         task_id = str(uuid.uuid4())

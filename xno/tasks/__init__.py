@@ -13,8 +13,8 @@ class CeleryQueueNames:
     STRATEGY = "strategy_queue"
 
 class CeleryTaskGroups:
-    RUN_BACKTEST = "backtest_worker"
-    RUN_STRATEGY = "strategy_worker"
+    BACKTEST = "backtest_worker"
+    STRATEGY = "strategy_worker"
 
 capp = Celery(
     broker=broker_url,
@@ -25,8 +25,8 @@ capp.conf.task_queues = (
     Queue(CeleryQueueNames.STRATEGY),
 )
 capp.conf.task_routes = {
-    f"{CeleryTaskGroups.RUN_BACKTEST}.*": {"queue": CeleryQueueNames.BACKTEST},
-    f"{CeleryTaskGroups.RUN_STRATEGY}.*": {"queue": CeleryQueueNames.STRATEGY},
+    f"{CeleryTaskGroups.BACKTEST}.*": {"queue": CeleryQueueNames.BACKTEST},
+    f"{CeleryTaskGroups.STRATEGY}.*": {"queue": CeleryQueueNames.STRATEGY},
 }
 capp.conf.update(
     task_serializer="json",

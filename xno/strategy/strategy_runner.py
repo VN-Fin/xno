@@ -18,6 +18,7 @@ import xno.utils.keys as ukeys
 import numpy as np
 
 from xno.models.backtest import BacktestInput
+from xno.utils.dc import timing
 from xno.utils.stream import delivery_report
 from xno.data.all_data_final import AllData
 import threading
@@ -373,6 +374,26 @@ class StrategyRunner(ABC):
         """
         raise NotImplementedError("Subclasses should implement this method.")
 
+    def send_backtest_task(self):
+        """
+        Use this function to send backtest task to celery worker.
+        :return: None
+        """
+        from xno.tasks import capp
+        import pickle
+        import uuid
+
+        bt_input = self.get_backtest_input()
+        bt_input_bytes = pickle.dumps(bt_input)
+        sig = capp.signature(
+            "bt_worker.run_backtest",
+            args=(bt_input_bytes, ),
+        )
+        task_id = str(uuid.uuid4())
+        sig.apply_async(task_id=task_id)
+        logging.info(f"Sending backtest task for strategy {self.strategy_id}. Task ID: {task_id}")
+
+    @timing
     def backtest(self) -> StrategyTradeSummary:
         """
         Run backtest for the strategy using BacktestCalculator.
@@ -386,6 +407,7 @@ class StrategyRunner(ABC):
             self.bt_summary = bt_calculator.summarize()
         return self.bt_summary
 
+    @timing
     def visualize(self, name: str = None) -> None:
         """
         Visualize the backtest results.
@@ -394,7 +416,7 @@ class StrategyRunner(ABC):
         if self.bt_summary is None:
             self.backtest()
 
-        bt_input = self.get_backtest_input()
+        # bt_input = self.get_backtest_input()
         from xno.backtest import StrategyVisualizer
         visualizer = StrategyVisualizer(self, name=name or self.strategy_id)
         visualizer.visualize()

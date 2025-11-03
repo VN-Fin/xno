@@ -165,6 +165,7 @@ if __name__ == "__main__":
         logging.info(f"Run stats: {runner.stats()}")
         logging.info(f"Backtest: {runner.backtest()}")
         runner.visualize()
+        runner.complete()
 
     except Exception as e:
         print(f"\nERROR: {e}")

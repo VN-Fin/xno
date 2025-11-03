@@ -43,17 +43,22 @@ class AppConfig:
 
     # Kafka config vs topics
     kafka_bootstrap_servers: str = os.environ.get('KAFKA_SERVERS', 'localhost:9092')
+    # Data topic
     kafka_market_data_topic: str = "market.data.transformed"
-    kafka_state_history_topic: str = "strategy.state.history"
-    kafka_state_latest_topic: str = "strategy.state.latest"
-    kafka_signal_latest_topic: str = "strategy.signal.latest"
+    # Historical topics
+    kafka_backtest_history_topic: str = "strategy.backtest.history"
+    kafka_backtest_overview_topic: str = "strategy.backtest.overview"
+    # Ping / Heartbeat topic
     kafka_ping_topic: str = "ping"
     # Config for execution database
     execution_db_name: str = "xno_execution"
     data_db_name: str = "xno_data"
-    # Redis hash key config
-    redis_signal_latest_hash: str = kafka_signal_latest_topic
-    redis_state_latest_hash: str = kafka_state_latest_topic
+    # Redis hash key config and Kafka topic config for latest signal/state
+    # Use this to resume and track latest state/signal
+    kafka_signal_latest_topic: str = "strategy.signal.latest"
+    kafka_state_latest_topic: str = "strategy.state.latest"
+    redis_signal_latest_hash: str = "strategy.signal.latest"
+    redis_state_latest_hash: str = "strategy.state.latest"
     # Fee config
     trading_fee = FeeConfig()
 

@@ -68,11 +68,13 @@ class StrategyRunner(ABC):
 
         self.send_data = send_data
         self.producer = get_producer()
+        # Store signal keys
         self.redis_latest_signal_key = ukeys.generate_latest_signal_key(self.mode)
+        self.kafka_latest_signal_topic = ukeys.generate_latest_signal_kafka_topic()
+        # Latest state keys (for restarting)
         self.redis_latest_state_key = ukeys.generate_latest_state_key(self.mode)
-        self.kafka_latest_signal_topic = ukeys.generate_latest_signal_topic(self.mode)
-        self.kafka_latest_state_topic = ukeys.generate_latest_state_topic(self.mode)
-        self.kafka_history_state_topic = ukeys.generate_history_state_topic(self.mode)
+        self.kafka_latest_state_topic = ukeys.generate_latest_state_kafka_topic()
+        # Checkpoint index for resuming
         self.checkpoint_idx = 0
         self.re_run = re_run
         self.datas: pd.DataFrame = pd.DataFrame()
@@ -271,7 +273,7 @@ class StrategyRunner(ABC):
         current_state_str = self.current_state.to_json_str()
         logging.debug(f"Sending latest state {current_state_str}")
         self.producer.produce(
-            self.kafka_latest_state_topic,
+            self.kafka_latest_signal_topic,
             key=self.strategy_id,
             value=current_state_str,
             callback=delivery_report
@@ -292,6 +294,9 @@ class StrategyRunner(ABC):
         else:
             logging.info(f"send_data is False, skipping sending latest signal for strategy_id={self.strategy_id}")
 
+    def complete(self):
+        self.producer.flush()
+
     def run(self):
         # Setup fields
         self.__setup__()
@@ -302,7 +307,6 @@ class StrategyRunner(ABC):
             value=f"Run strategy {self.strategy_id}. Re-run={self.re_run}",
             callback=delivery_report
         )
-        self.producer.flush() # Ensure ping is sent before proceeding
         # Load data
         self.__load_data__()
         if len(self.datas) == 0:

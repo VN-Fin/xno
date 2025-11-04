@@ -69,10 +69,10 @@ class StrategyRunner(ABC):
         self.send_data = send_data
         self.producer = get_producer()
         # Store signal keys
-        self.redis_latest_signal_key = ukeys.generate_latest_signal_key(self.mode)
+        self.redis_latest_signal_key = ukeys.generate_latest_signal_key()
         self.kafka_latest_signal_topic = ukeys.generate_latest_signal_kafka_topic()
         # Latest state keys (for restarting)
-        self.redis_latest_state_key = ukeys.generate_latest_state_key(self.mode)
+        self.redis_latest_state_key = ukeys.generate_latest_state_key()
         self.kafka_latest_state_topic = ukeys.generate_latest_state_kafka_topic()
         # Checkpoint index for resuming
         self.checkpoint_idx = 0
@@ -211,6 +211,10 @@ class StrategyRunner(ABC):
         Send the latest strategy signal to Kafka and Redis
         only if the signal has changed.
         """
+        # Double check mode
+        if self.mode != AllowedTradeMode.LiveTrade:
+            logging.info(f"Mode is {self.mode}, skipping sending live signal for strategy_id={self.strategy_id}")
+            return
         state = self.current_state
         redis_key = self.redis_latest_signal_key
         strategy_id = self.strategy_id
@@ -270,6 +274,10 @@ class StrategyRunner(ABC):
         [ALWAYS] Send the latest strategy state to Kafka and Redis.
         :return:
         """
+        # Double check mode
+        if self.mode != AllowedTradeMode.LiveTrade:
+            logging.info(f"Mode is {self.mode}, skipping sending live state for strategy_id={self.strategy_id}")
+            return
         current_state_str = self.current_state.to_json_str()
         logging.debug(f"Sending latest state {current_state_str}")
         self.producer.produce(

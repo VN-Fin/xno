@@ -53,7 +53,7 @@ class StrategyVisualizer:
             logging.warning("No backtest data available to visualize.")
             return
         df = pd.DataFrame(self.state_history)
-        df.set_index('candle', inplace=True)
+        df.set_index('candles', inplace=True)
         df.index = pd.to_datetime(df.index)
 
 
@@ -79,12 +79,12 @@ class StrategyVisualizer:
 
         # === Row 1: Strategy vs Benchmark ===
         fig.add_trace(go.Scatter(
-            x=df.index, y=df['cumret'], mode='lines', name='Strategy',
+            x=df.index, y=df['cumrets'], mode='lines', name='Strategy',
             line=dict(color='blue')
         ), row=1, col=1)
 
         fig.add_trace(go.Scatter(
-            x=df.index, y=df['bm_cumret'], mode='lines', name='Benchmark',
+            x=df.index, y=df['bm_cumrets'], mode='lines', name='Benchmark',
             line=dict(color='gray', dash='dot')
         ), row=1, col=1)
 
@@ -98,7 +98,7 @@ class StrategyVisualizer:
         buy_df = df[df['actions'] == 'B'].copy()
         buy_df['date_str'] = buy_df.index.strftime('%Y-%m-%d')
         buy_df['time_str'] = buy_df.index.strftime('%H:%M:%S')
-        buy_df['balance_str'] = buy_df['balance'].astype(float).apply(lambda x: f"{x:,.2f}")
+        buy_df['balance_str'] = buy_df['balances'].astype(float).apply(lambda x: f"{x:,.2f}")
         buy_df['amount_str'] = buy_df['trade_sizes'].astype(float).apply(lambda x: f"{x:.2f}")
         buy_df['fee_str'] = buy_df['fees'].astype(float).apply(lambda x: f"{x:.2f}")
         buy_df['price_str'] = buy_df['prices'].astype(float).apply(lambda x: f"{x:.2f}")
@@ -119,7 +119,7 @@ class StrategyVisualizer:
         sell_df = df[df['actions'] == 'S'].copy()
         sell_df['date_str'] = sell_df.index.strftime('%Y-%m-%d')
         sell_df['time_str'] = sell_df.index.strftime('%H:%M:%S')
-        sell_df['balance_str'] = sell_df['balance'].astype(float).apply(lambda x: f"{x:,.2f}")
+        sell_df['balance_str'] = sell_df['balances'].astype(float).apply(lambda x: f"{x:,.2f}")
         sell_df['amount_str'] = sell_df['trade_sizes'].astype(float).apply(lambda x: f"{x:.2f}")
         sell_df['fee_str'] = sell_df['fees'].astype(float).apply(lambda x: f"{x:.2f}")
         sell_df['price_str'] = sell_df['prices'].astype(float).apply(lambda x: f"{x:.2f}")
@@ -137,15 +137,15 @@ class StrategyVisualizer:
         ), row=2, col=1)
         last_row = df.iloc[-1]
         fig.add_trace(go.Scatter(
-            x=[last_row.name], y=[last_row['cumret']],
-            mode='text', text=[f" -> {last_row['cumret']:.2f}"],
+            x=[last_row.name], y=[last_row['cumrets']],
+            mode='text', text=[f" -> {last_row['cumrets']:.2f}"],
             textposition='middle right',
             textfont=dict(color='blue', size=12), showlegend=False
         ), row=1, col=1)
 
         fig.add_trace(go.Scatter(
-            x=[last_row.name], y=[last_row['bm_cumret']],
-            mode='text', text=[f" -> {last_row['bm_cumret']:.2f}"],
+            x=[last_row.name], y=[last_row['bm_cumrets']],
+            mode='text', text=[f" -> {last_row['bm_cumrets']:.2f}"],
             textposition='middle right',
             textfont=dict(color='gray', size=12), showlegend=False
         ), row=1, col=1)

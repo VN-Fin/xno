@@ -48,11 +48,13 @@ def get_returns_stock(
     prices = np.asarray(prices, dtype=np.float64)
     positions = np.asarray(positions, dtype=np.float64)
     trade_sizes = np.asarray(trade_sizes, dtype=np.float64)
-    positions = positions - trade_sizes
+    # positions = positions - trade_sizes
+    positions_prev = np.roll(positions, 1)
+    positions_prev[0] = 0  # assume no position before first bar
 
     fees = np.abs(trade_sizes) * prices * fee_rate
     price_diff = np.diff(prices, prepend=prices[0])
-    pnl = positions * price_diff
+    pnl = positions_prev * price_diff - fees
 
     pnl_cum = np.cumsum(pnl)
     fees_cum = np.cumsum(fees)

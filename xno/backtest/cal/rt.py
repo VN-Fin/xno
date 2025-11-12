@@ -58,7 +58,7 @@ def get_returns_stock(
 
     pnl_cum = np.cumsum(pnl)
     fees_cum = np.cumsum(fees)
-    equity = init_cash + pnl_cum - fees_cum
+    equity = init_cash + pnl_cum
 
     returns = np.zeros_like(equity)
     returns[1:] = _safe_divide(equity[1:] - equity[:-1], equity[:-1])
@@ -105,15 +105,18 @@ def get_returns_derivative(
     prices = np.asarray(prices, dtype=np.float64)
     positions = np.asarray(positions, dtype=np.float64)
     trade_sizes = np.asarray(trade_sizes, dtype=np.float64)
-    positions = positions - trade_sizes
+
+    # positions = positions - trade_sizes
+    positions_prev = np.roll(positions, 1)  # Use previous positions for PnL calculation
+    positions_prev[0] = 0  # assume no position before first bar
 
     fees = np.abs(trade_sizes) * fee_rate
     price_diff = np.diff(prices, prepend=prices[0])
-    pnl = positions * price_diff * 100_000
+    pnl = positions_prev * price_diff * 100_000 - fees
 
     pnl_cum = np.cumsum(pnl)
     fees_cum = np.cumsum(fees)
-    equity = init_cash + pnl_cum - fees_cum
+    equity = init_cash + pnl_cum
 
     returns = np.zeros_like(equity)
     returns[1:] = _safe_divide(equity[1:] - equity[:-1], equity[:-1])
@@ -124,6 +127,8 @@ def get_returns_derivative(
     max_contracts = round_to_lot(init_cash / 25_000_000, 1)
     bm_pnl = np.cumsum(price_diff * max_contracts * 100_000)
     bm_equity = init_cash + bm_pnl
+    bm_pnl = price_diff * max_contracts * 100_000
+    bm_equity = init_cash + np.cumsum(bm_pnl)
     bm_returns = np.zeros_like(bm_equity)
     bm_returns[1:] = _safe_divide(bm_equity[1:] - bm_equity[:-1], bm_equity[:-1])
     bm_cumret = _compound_returns(bm_returns)

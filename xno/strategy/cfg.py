@@ -40,7 +40,7 @@ class StrategyConfigLoader:
         for row in result_iter:
             run_from = row.result.get('from')
             run_to = row.result.get('to')
-            init_cash = row.result.get('cash')
+            init_cash = row.result.get('cash', 100_000_000)  # Default to 100 million if not specified
 
             if run_from is None or run_to is None or init_cash is None:
                 logging.warning(

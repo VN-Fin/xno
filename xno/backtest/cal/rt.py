@@ -67,7 +67,15 @@ def get_returns_stock(
 
     returns = pd.Series(returns, index=pd.to_datetime(times))
 
-    bm_equity = (init_cash / prices[0]) * prices
+    # bm_equity = (init_cash / prices[0]) * prices
+    # bm_returns = np.zeros_like(bm_equity)
+    # bm_returns[1:] = _safe_divide(bm_equity[1:] - bm_equity[:-1], bm_equity[:-1])
+    # bm_cumret = _compound_returns(bm_returns)
+    # bm_pnl = bm_equity - init_cash
+
+    bm_shares = init_cash / prices[0]
+    initial_fee = bm_shares * prices[0] * fee_rate
+    bm_equity = bm_shares * prices - initial_fee
     bm_returns = np.zeros_like(bm_equity)
     bm_returns[1:] = _safe_divide(bm_equity[1:] - bm_equity[:-1], bm_equity[:-1])
     bm_cumret = _compound_returns(bm_returns)
@@ -124,11 +132,18 @@ def get_returns_derivative(
     cumret = _compound_returns(returns)
     returns = pd.Series(returns, index=pd.to_datetime(times))
 
+    # max_contracts = round_to_lot(init_cash / 25_000_000, 1)
+    # bm_pnl = price_diff * max_contracts * 100_000
+    # bm_equity = init_cash + np.cumsum(bm_pnl)
+    # bm_returns = np.zeros_like(bm_equity)
+    # bm_returns[1:] = _safe_divide(bm_equity[1:] - bm_equity[:-1], bm_equity[:-1])
+    # bm_cumret = _compound_returns(bm_returns)
+    # Benchmark: mua và giữ, trừ phí giao dịch ban đầu
+
     max_contracts = round_to_lot(init_cash / 25_000_000, 1)
-    bm_pnl = np.cumsum(price_diff * max_contracts * 100_000)
-    bm_equity = init_cash + bm_pnl
+    initial_fee = max_contracts * fee_rate  # Phí mua ban đầu
     bm_pnl = price_diff * max_contracts * 100_000
-    bm_equity = init_cash + np.cumsum(bm_pnl)
+    bm_equity = init_cash + np.cumsum(bm_pnl) - initial_fee  # Trừ phí ban đầu
     bm_returns = np.zeros_like(bm_equity)
     bm_returns[1:] = _safe_divide(bm_equity[1:] - bm_equity[:-1], bm_equity[:-1])
     bm_cumret = _compound_returns(bm_returns)

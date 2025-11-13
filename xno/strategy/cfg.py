@@ -125,7 +125,7 @@ if __name__ == "__main__":
     config = StrategyConfigLoader.get_config("94871eaf8becd88290130c77a90fb4a5", AllowedTradeMode.BackTrade)
     print(config.model_dump_json())  # to string
 
-    configs = StrategyConfigLoader.get_live_strategy_configs("S", "AI-Bot")
+    configs = StrategyConfigLoader.get_live_strategy_configs("S", AllowedEngine.AIBot)
     print("Live strategy config len:", len(list(configs)))
     #
     # config = StrategyConfigLoader.get_config(uuid.uuid4().__str__(), AllowedTradeMode.BackTrade, "")

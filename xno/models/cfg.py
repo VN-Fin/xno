@@ -7,9 +7,18 @@ from xno.models.tp import AllowedTradeMode
 
 class AdvancedConfig(BaseModel):
     expression: str = ""
-    close_on_end_day: bool = False
-    use_trailing_stop: bool = False
-    trailing_stop_pct: float = 0
+    code: str = ""
+    info: Any = None
+    val_to: Any = None
+    train_to: Any = None
+    val_from: Any = None
+    algorithm: Any = None
+    train_from: Any = None
+    action_list: Any = None
+    alpha_funcs: Any = None
+    train_epoch: Any = None
+    window_size: Any = None
+
 
 class StrategyConfig(BaseModel):
     strategy_id: str

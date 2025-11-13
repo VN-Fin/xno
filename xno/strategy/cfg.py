@@ -14,7 +14,7 @@ from contextlib import ExitStack
 
 class StrategyConfigLoader:
     @classmethod
-    def get_live_strategy_configs(cls, symbol_type) -> Iterable[StrategyConfig]:
+    def get_live_strategy_configs(cls, symbol_type, engine) -> Iterable[StrategyConfig]:
         query = f"""
             SELECT
                 id,
@@ -33,7 +33,7 @@ class StrategyConfigLoader:
             session = stack.enter_context(SqlSession(settings.execution_db_name))
             result_iter = session.execute(
                 text(query),
-                {"engine": AllowedEngine.TABot, "symbol_type": symbol_type},
+                {"engine": engine, "symbol_type": symbol_type},
             )
 
         # Stream rows as they come (no fetchall)
@@ -63,8 +63,8 @@ class StrategyConfigLoader:
 
     @classmethod
     @ttl_cache(ttl=3600 * 8, maxsize=1000000)  # Cache for 8 hours
-    def get_config(cls, strategy_id: str, mode: AllowedTradeMode, run_id="") -> StrategyConfig | None:
-        logging.info(f"Getting config for strategy_id={strategy_id}, mode={mode}, run_id={run_id}")
+    def get_config(cls, strategy_id: str, mode: AllowedTradeMode) -> StrategyConfig | None:
+        logging.info(f"Getting config for strategy_id={strategy_id}, mode={mode}")
         if mode == AllowedTradeMode.BackTrade:
             column = "backtest"
         elif mode == AllowedTradeMode.PaperTrade:
@@ -82,7 +82,7 @@ class StrategyConfigLoader:
                 advanced_config as advanced_config,
                 engine as engine
             FROM alpha.strategy_overview
-            WHERE id = :strategy_id AND engine = :engine
+            WHERE id = :strategy_id
             LIMIT 1
         """
         # Lock to ensure thread-safe read
@@ -91,7 +91,7 @@ class StrategyConfigLoader:
             session = stack.enter_context(SqlSession(settings.execution_db_name))
             result = session.execute(
                 text(query),
-                {'strategy_id': strategy_id, "engine": AllowedEngine.TABot},
+                {'strategy_id': strategy_id},
             )
 
         row = result.fetchone()
@@ -119,13 +119,15 @@ class StrategyConfigLoader:
 if __name__ == "__main__":
     # Initial load
     # Example usage
-    config = StrategyConfigLoader.get_config("1569c66133af50d05a5c45715031fcc8", AllowedTradeMode.BackTrade, "")
-    print(config)
+    config = StrategyConfigLoader.get_config("1569c66133af50d05a5c45715031fcc8", AllowedTradeMode.BackTrade)
+    print(config.model_dump_json())  # to string
+    print("=====================================================================================")
+    config = StrategyConfigLoader.get_config("94871eaf8becd88290130c77a90fb4a5", AllowedTradeMode.BackTrade)
     print(config.model_dump_json())  # to string
 
-    configs = StrategyConfigLoader.get_live_strategy_configs("S")
+    configs = StrategyConfigLoader.get_live_strategy_configs("S", "AI-Bot")
     print("Live strategy config len:", len(list(configs)))
-
-    config = StrategyConfigLoader.get_config(uuid.uuid4().__str__(), AllowedTradeMode.BackTrade, "")
-    print(config)
-    print(config.model_dump_json())  # to string
+    #
+    # config = StrategyConfigLoader.get_config(uuid.uuid4().__str__(), AllowedTradeMode.BackTrade, "")
+    # print(config)
+    # print(config.model_dump_json())  # to string

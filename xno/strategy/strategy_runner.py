@@ -231,25 +231,13 @@ class StrategyRunner(ABC):
             bt_mode=state.bt_mode,
             engine=state.engine,
         )
-        # If previous exists, decode; otherwise force send
-        if prev_raw:
-            try:
-                prev_signal = StrategySignal.model_validate_json(prev_raw)
-            except Exception as e:
-                logging.warning(f"Invalid prev signal for {strategy_id}: {e}, resending current.")
-                prev_signal = None
-        else:
-            prev_signal = None
-        # Compare relevant fields (weight + action + price)
-        if (
-                prev_signal
-                and current_signal.current_weight == prev_signal.current_weight
-                and current_signal.current_action == prev_signal.current_action
-                and abs(current_signal.current_price - prev_signal.current_price) < 1e-9
-        ):
-            # Skip logging each time; use debug for quiet mode
-            logging.debug(f"No signal change for {strategy_id}, skip sending.")
-            return
+        if prev_raw is not None:
+            # Load signal
+            prev_signal = StrategySignal.model_validate_json(prev_raw)
+            if current_signal == prev_signal:
+                # Skip logging each time; use debug for quiet mode
+                logging.debug(f"No signal change for {strategy_id}, skip sending.")
+                return
 
         # Serialize once
         signal_json = current_signal.to_json_str()

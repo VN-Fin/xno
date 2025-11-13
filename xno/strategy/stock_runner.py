@@ -148,7 +148,7 @@ if __name__ == "__main__":
         init_cash=1000000000,
         run_from="2023-01-01",
         run_to="2024-12-31",
-        mode=AllowedTradeMode.BackTrade,
+        mode=AllowedTradeMode.LiveTrade,
         advanced_config=AdvancedConfig(),
         engine=AllowedEngine.TABot,
 
@@ -158,7 +158,7 @@ if __name__ == "__main__":
         runner = TestStrategyRunner(
             config=strategy_config,
             re_run=True,
-            send_data=False,
+            send_data=True,
         )
         runner.run()
         runner.send_backtest_task()

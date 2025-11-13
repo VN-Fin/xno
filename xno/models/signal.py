@@ -47,13 +47,27 @@ class StrategySignal(BaseModel):
         if not isinstance(other, StrategySignal):
             return False
 
-        a, b = self.model_dump(), other.model_dump()
-        for key in a.keys():
-            if isinstance(a[key], (int, float)) and isinstance(b[key], (int, float)):
-                if not np.isclose(a[key], b[key], rtol=1e-8, atol=1e-12):  # compare float
-                    return False
-            elif a[key] != b[key]:
-                return False
+        if self.strategy_id != other.strategy_id:
+            return False
+
+        # compare datetime
+        if pd.Timestamp(self.candle) != pd.Timestamp(other.candle):
+            return False
+
+        current_action = self.current_action.value if isinstance(self.current_action, AllowedAction) else self.current_action
+        prev_action = other.current_action.value if isinstance(other.current_action, AllowedAction) else other.current_action
+        # Compare action and weight
+        if current_action != prev_action:
+            return False
+
+        # if similar weight
+        if not np.isclose(self.current_weight, other.current_weight, rtol=1e-8, atol=1e-12):
+            return False
+
+        # if similar price
+        if not np.isclose(self.current_price, other.current_price, rtol=1e-8, atol=1e-12):
+            return False
+
         return True
 
 

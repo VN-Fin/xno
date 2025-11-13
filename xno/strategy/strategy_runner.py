@@ -216,10 +216,9 @@ class StrategyRunner(ABC):
             logging.info(f"Mode is {self.mode}, skipping sending live signal for strategy_id={self.strategy_id}")
             return
         state = self.current_state
-        redis_key = self.redis_latest_signal_key
         strategy_id = self.strategy_id
         # Retrieve previous signal JSON (bytes or str)
-        prev_raw = RedisClient.hget(name=redis_key, key=strategy_id)
+        prev_raw = RedisClient.hget(name=self.redis_latest_signal_key, key=strategy_id)
         # Build current signal model
         current_signal = StrategySignal(
             strategy_id=state.strategy_id,
@@ -263,7 +262,7 @@ class StrategyRunner(ABC):
         )
         # Cache to Redis
         RedisClient.hset(
-            name=redis_key,
+            name=self.redis_latest_signal_key,
             key=strategy_id,
             value=signal_json,
         )
@@ -281,7 +280,7 @@ class StrategyRunner(ABC):
         current_state_str = self.current_state.to_json_str()
         logging.debug(f"Sending latest state {current_state_str}")
         self.producer.produce(
-            self.kafka_latest_signal_topic,
+            self.kafka_latest_state_topic,
             key=self.strategy_id,
             value=current_state_str,
             callback=delivery_report

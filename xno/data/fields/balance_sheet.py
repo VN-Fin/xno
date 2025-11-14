@@ -22,3 +22,8 @@ class BalanceSheetQuarterly(_BalanceSheetField):
     pass
 
 __all__ = ['BalanceSheetAnnual', 'BalanceSheetQuarterly']
+
+
+# field_map = {
+#     "ShortTermAssets": "fieldFromAPI",
+# }

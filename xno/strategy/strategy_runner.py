@@ -382,14 +382,15 @@ class StrategyRunner(ABC):
         import pickle
         import uuid
 
+        if task_id is None:
+            task_id = uuid.uuid4().hex
+
         bt_input = self.get_backtest_input()
         bt_input_bytes = pickle.dumps(bt_input)
         sig = capp.signature(
             f"{CeleryTaskGroups.BACKTEST}.run_backtest",
-            args=(bt_input_bytes, ),
+            args=(bt_input_bytes, task_id, ),
         )
-        if task_id is None:
-            task_id = uuid.uuid4().hex
         sig.apply_async(task_id=task_id)
         logging.info(f"Sending backtest task for strategy {self.strategy_id}. Task ID: {task_id}")
 

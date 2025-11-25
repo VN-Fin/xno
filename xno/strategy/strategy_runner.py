@@ -373,7 +373,7 @@ class StrategyRunner(ABC):
         """
         raise NotImplementedError("Subclasses should implement this method.")
 
-    def send_backtest_task(self):
+    def send_backtest_task(self, task_id: str = None):
         """
         Use this function to send backtest task to celery worker.
         :return: None
@@ -388,7 +388,8 @@ class StrategyRunner(ABC):
             f"{CeleryTaskGroups.BACKTEST}.run_backtest",
             args=(bt_input_bytes, ),
         )
-        task_id = str(uuid.uuid4())
+        if task_id is None:
+            task_id = uuid.uuid4().hex
         sig.apply_async(task_id=task_id)
         logging.info(f"Sending backtest task for strategy {self.strategy_id}. Task ID: {task_id}")
 

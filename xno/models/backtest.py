@@ -17,4 +17,4 @@ class BacktestInput:
     prices: np.ndarray
     positions: np.ndarray
     trade_sizes: np.ndarray
-
+    run_id: str = None

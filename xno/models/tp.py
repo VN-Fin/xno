@@ -1,35 +1,31 @@
-from enum import Enum
-from typing import List
+import enum
+
+class TypeTradeMode(enum.IntEnum):
+    Train = 0
+    Test = 1
+    Simulate = 2
+    Live = 3
 
 
-class AllowedTradeMode(int, Enum):
-    BackTrade = 0
-    PaperTrade = 1
-    LiveTrade = 2
-
-
-class AllowedSymbolType(str, Enum):
+class TypeMarket(enum.StrEnum):
     Stock = "S"
-    Derivative = "D"
     Crypto = "C"
+    Forex = "F"
+    Index = "I"
+
+class TypeContract(enum.StrEnum):
+    Spot = "S"
+    Future = "F"
+    Option = "O"
 
 
-class AllowedEngine(str, Enum):
+class TypeEngine(enum.StrEnum):
     TABot = "TA-Bot"
     AIBot = "AI-Bot"
     XQuant = "X-Quant"
 
-    @classmethod
-    def all_engines(cls) -> List[str]:
-        return [e.value for e in AllowedEngine]
 
-class AllowedAction(str, Enum):
+class TypeAction(enum.StrEnum):
     Buy = "B"
     Sell = "S"
     Hold = "H"
-
-
-ActionType = AllowedAction | str
-TradeModeType = AllowedTradeMode | int
-EngineType = AllowedEngine | str
-SymbolType = AllowedSymbolType | str

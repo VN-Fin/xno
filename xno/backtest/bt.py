@@ -1,7 +1,10 @@
 import pandas as pd
 
 from xno import settings
-from xno.models import StrategyTradeSummary, AllowedTradeMode
+from xno.models import (
+    StrategyTradeSummary,
+    TypeTradeMode
+)
 from xno.basic_type import NumericType
 import numpy as np
 from xno.backtest.cal.anl import get_trade_analysis_metrics

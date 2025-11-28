@@ -1,5 +1,4 @@
 import logging
-import uuid
 from typing import Iterable
 
 from cachetools.func import ttl_cache
@@ -12,27 +11,29 @@ from xno.models import AdvancedConfig, StrategyConfig
 from xno.models.tp import AllowedTradeMode, AllowedEngine
 from contextlib import ExitStack
 
+live_strategy_query = text("""
+    SELECT
+        id,
+        symbol,
+        timeframe,
+        live as result,
+        advanced_config as advanced_config,
+        engine as engine
+    FROM alpha.strategy_overview
+    WHERE engine = :engine AND symbol_type = :symbol_type
+    ORDER BY symbol, id
+""")
+
+
 class StrategyConfigLoader:
     @classmethod
     def get_live_strategy_configs(cls, symbol_type, engine) -> Iterable[StrategyConfig]:
-        query = f"""
-            SELECT
-                id,
-                symbol,
-                timeframe,
-                live as result,
-                advanced_config as advanced_config,
-                engine as engine
-            FROM alpha.strategy_overview
-            WHERE engine = :engine AND symbol_type = :symbol_type
-            ORDER BY symbol, id
-        """
         with ExitStack() as stack:
             # Lock to ensure thread-safe read
             stack.enter_context(DistributedSemaphore())
             session = stack.enter_context(SqlSession(settings.execution_db_name))
             result_iter = session.execute(
-                text(query),
+                live_strategy_query,
                 {"engine": engine, "symbol_type": symbol_type},
             )
 

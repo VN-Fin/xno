@@ -4,13 +4,16 @@ from typing import List, Dict, Optional
 from confluent_kafka import Producer
 
 from xno import settings
-from xno.models import StrategyTradeSummary, StrategyConfig, AllowedSymbolType, AdvancedConfig
 from xno.connectors.rd import RedisClient
 from xno.models import (
     StrategyState,
     StrategySignal,
-    AllowedAction,
-    FieldInfo, AllowedEngine,
+    TypeAction,
+    FieldInfo,
+    TypeEngine,
+    AdvancedConfig,
+    StrategyTradeSummary,
+    StrategyConfig
 )
 import pandas as pd
 import logging
@@ -23,7 +26,7 @@ from xno.utils.stream import delivery_report
 from xno.data.all_data_final import AllData
 import threading
 
-from xno.models import AllowedTradeMode
+from xno.models import TypeTradeMode
 
 
 _local = threading.local()
@@ -212,7 +215,7 @@ class StrategyRunner(ABC):
         only if the signal has changed.
         """
         # Double check mode
-        if self.mode != AllowedTradeMode.LiveTrade:
+        if self.mode != TypeTradeMode.LiveTrade:
             logging.info(f"Mode is {self.mode}, skipping sending live signal for strategy_id={self.strategy_id}")
             return
         state = self.current_state
@@ -262,7 +265,7 @@ class StrategyRunner(ABC):
         :return:
         """
         # Double check mode
-        if self.mode != AllowedTradeMode.LiveTrade:
+        if self.mode != TypeTradeMode.Live:
             logging.info(f"Mode is {self.mode}, skipping sending live state for strategy_id={self.strategy_id}")
             return
         current_state_str = self.current_state.to_json_str()
@@ -283,7 +286,7 @@ class StrategyRunner(ABC):
     def __done__(self):
         # Send signal [Optional]
         if self.send_data:
-            if self.current_state.bt_mode == AllowedTradeMode.LiveTrade:
+            if self.current_state.bt_mode == TypeTradeMode.Live:
                 self.__send_signal__()
                 self.__send_state__()
         else:

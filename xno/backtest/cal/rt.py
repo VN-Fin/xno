@@ -1,25 +1,8 @@
-import dataclasses
 import numpy as np
 import pandas as pd
 
+from xno.models.bt_result import BacktestResult
 from xno.utils.stock import round_to_lot
-
-
-@dataclasses.dataclass
-class BacktestResult:
-    times: np.ndarray
-    prices: np.ndarray
-    positions: np.ndarray
-    trade_sizes: np.ndarray
-    returns: pd.Series
-    cumret: np.ndarray
-    pnl: np.ndarray
-    fees: np.ndarray
-    equity_curve: np.ndarray
-    bm_equities: np.ndarray
-    bm_returns: np.ndarray
-    bm_cumret: np.ndarray
-    bm_pnl: np.ndarray
 
 
 def _compound_returns(returns: np.ndarray) -> np.ndarray:
@@ -65,7 +48,7 @@ def get_returns_stock(
 
     cumret = _compound_returns(returns)
 
-    returns = pd.Series(returns, index=pd.to_datetime(times))
+    # returns = pd.Series(returns, index=pd.to_datetime(times))
 
     # bm_equity = (init_cash / prices[0]) * prices
     # bm_returns = np.zeros_like(bm_equity)
@@ -130,7 +113,7 @@ def get_returns_derivative(
     returns[1:] = _safe_divide(equity[1:] - equity[:-1], equity[:-1])
 
     cumret = _compound_returns(returns)
-    returns = pd.Series(returns, index=pd.to_datetime(times))
+    # returns = pd.Series(returns, index=pd.to_datetime(times))
 
     # max_contracts = round_to_lot(init_cash / 25_000_000, 1)
     # bm_pnl = price_diff * max_contracts * 100_000

@@ -1,34 +1,77 @@
 from typing import Any
-from pydantic import BaseModel
+import orjson
 
-from xno.models.tp import AllowedSymbolType
-from xno.models.tp import AllowedTradeMode
+from dataclasses import dataclass
+import datetime
+import pandas as pd
+import numpy as np
+
+from xno.models.tp import (
+    TypeMarket,
+    TypeContract,
+    TypeTradeMode,
+    TypeEngine
+)
+from xno.utils.struct import DefaultStruct
+
+__all__ = ["AdvancedConfig", "StrategyConfig"]
 
 
-class AdvancedConfig(BaseModel):
+@dataclass
+class AdvancedConfig(DefaultStruct):
     expression: str = ""
     code: str = ""
     info: Any = None
-    val_to: Any = None
-    train_to: Any = None
-    val_from: Any = None
+    val_to: datetime.datetime | np.datetime64 | pd.Timestamp | None = None
+    train_to: datetime.datetime | np.datetime64 | pd.Timestamp | None = None
+    val_from: datetime.datetime | np.datetime64 | pd.Timestamp | None = None
     algorithm: Any = None
-    train_from: Any = None
+    train_from: datetime.datetime | np.datetime64 | pd.Timestamp | None = None
     action_list: Any = None
     alpha_funcs: Any = None
     train_epoch: Any = None
     window_size: Any = None
 
 
-class StrategyConfig(BaseModel):
+@dataclass
+class StrategyConfig(DefaultStruct):
     strategy_id: str
-    symbol: str
-    symbol_type: AllowedSymbolType
+    symbol: str    # Trading symbol, e.g., "AAPL", "BTC-USD"
+    market: TypeMarket
+    contract: TypeContract
     timeframe: str
     init_cash: float
-    run_from: Any
-    run_to: Any
-    mode: AllowedTradeMode
+    run_from: datetime.datetime | np.datetime64 | pd.Timestamp
+    run_to: datetime.datetime | np.datetime64 | pd.Timestamp
+    mode: TypeTradeMode
     advanced_config: AdvancedConfig
-    engine: str
+    engine: TypeEngine
 
+
+if __name__ == "__main__":
+    st = StrategyConfig(
+        strategy_id="strategy_id",
+        symbol="APPL",
+        market=TypeMarket.Stock,
+        contract=TypeContract.Spot,
+        timeframe="timeframe",
+        init_cash=1000.0,
+        run_from=datetime.datetime.now(),
+        run_to=np.datetime64("2024-01-01T00:00:00"),
+        mode=TypeTradeMode.Live,
+        advanced_config=AdvancedConfig(
+            expression="expression",
+            code="code",
+            info="info",
+            val_to=datetime.datetime.now(),
+            train_to=pd.Timestamp(datetime.datetime.now()),
+        ),
+        engine=TypeEngine.XQuant,
+    )
+
+    print(st.to_json())
+
+    val = b'{"strategy_id":"strategy_id","symbol":"APPL","market":"S","contract":"S","timeframe":"timeframe","init_cash":1000.0,"run_from":"2025-11-29T01:01:16.915736","run_to":"2024-01-01T00:00:00","mode":3,"advanced_config":{"expression":"expression","code":"code","info":"info","val_to":"2025-11-29T01:01:16.915742","train_to":"2025-11-29 01:01:16.915743","val_from":null,"algorithm":null,"train_from":null,"action_list":null,"alpha_funcs":null,"train_epoch":null,"window_size":null},"engine":"X-Quant"}'
+
+    st2 = StrategyConfig.from_str(val)
+    print(st2.to_json())

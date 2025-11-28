@@ -3,8 +3,8 @@ import pandas as pd
 from xno.models.pf import TradePerformance
 import quantstats as qs
 
-def get_performance_metrics(returns: pd.Series) -> TradePerformance:
-    rets = returns.dropna()
+def get_performance_metrics(s_returns: pd.Series) -> TradePerformance:
+    rets = s_returns.dropna()
 
     # Infer frequency
     freq = pd.infer_freq(rets.index)

@@ -8,7 +8,7 @@ from xno import settings
 from xno.connectors.semaphore import DistributedSemaphore
 from xno.connectors.sql import SqlSession
 from xno.models import AdvancedConfig, StrategyConfig
-from xno.models.tp import AllowedTradeMode, AllowedEngine
+from xno.models import TypeTradeMode, TypeEngine
 from contextlib import ExitStack
 
 live_strategy_query = text("""
@@ -121,10 +121,10 @@ if __name__ == "__main__":
     # Initial load
     # Example usage
     config = StrategyConfigLoader.get_config("1569c66133af50d05a5c45715031fcc8", AllowedTradeMode.BackTrade)
-    print(config.model_dump_json())  # to string
+    print(config.to_json())  # to string
     print("=====================================================================================")
     config = StrategyConfigLoader.get_config("94871eaf8becd88290130c77a90fb4a5", AllowedTradeMode.BackTrade)
-    print(config.model_dump_json())  # to string
+    print(config.to_json())  # to string
 
     configs = StrategyConfigLoader.get_live_strategy_configs("S", AllowedEngine.AIBot)
     print("Live strategy config len:", len(list(configs)))

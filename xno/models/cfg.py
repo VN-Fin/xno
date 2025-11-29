@@ -1,11 +1,10 @@
 from typing import Any
-import orjson
-
 from dataclasses import dataclass
 import datetime
 import pandas as pd
 import numpy as np
 
+from xno.basic_type import DateTimeType
 from xno.models.tp import (
     TypeMarket,
     TypeContract,
@@ -41,8 +40,8 @@ class StrategyConfig(DefaultStruct):
     contract: TypeContract
     timeframe: str
     init_cash: float
-    run_from: datetime.datetime | np.datetime64 | pd.Timestamp
-    run_to: datetime.datetime | np.datetime64 | pd.Timestamp
+    run_from: DateTimeType
+    run_to: DateTimeType
     mode: TypeTradeMode
     advanced_config: AdvancedConfig
     engine: TypeEngine

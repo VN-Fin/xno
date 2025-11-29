@@ -1,5 +1,4 @@
 from dataclasses import dataclass
-import orjson
 
 __all__ = ["TradeAnalysis"]
 

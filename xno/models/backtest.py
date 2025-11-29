@@ -1,7 +1,6 @@
 from dataclasses import dataclass
 import numpy as np
 from typing import List
-import orjson
 from xno.models.tp import (
     TypeMarket,
     TypeContract,

@@ -140,7 +140,7 @@ class BaseBacktest(abc.ABC):
         self.performance = rs
         return self.performance
 
-    def summary(self) -> StrategyTradeSummary:
+    def summarize(self) -> StrategyTradeSummary:
         return StrategyTradeSummary(
             strategy_id=self.strategy_id,
             init_cash=self.init_cash,

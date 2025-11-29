@@ -1,11 +1,17 @@
 import enum
 
-class TypeTradeMode(enum.IntEnum):
-    Train = 0
-    Test = 1
-    Simulate = 2
-    Live = 3
+class TypeTradeMode(enum.StrEnum):
+    Train = "train"
+    Test = "test"
+    Simulate = "simulate"
+    Live = "live"
 
+class TypeStage(enum.StrEnum):
+    Init = "init"
+    Train = "train"
+    Test = "test"
+    Simulate = "simulate"
+    Live = "live"
 
 class TypeMarket(enum.StrEnum):
     Default = "D"
@@ -27,7 +33,7 @@ class TypeEngine(enum.StrEnum):
     XQuant = "X-Quant"
 
 
-class TypeAction(enum.StrEnum):
-    Buy = "B"
-    Sell = "S"
-    Hold = "H"
+class TypeAction(enum.IntEnum):
+    Buy = 1
+    Sell = -1
+    Hold = 0

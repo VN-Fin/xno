@@ -1,4 +1,3 @@
-import orjson
 from dataclasses import dataclass
 
 __all__ = ["FieldInfo"]

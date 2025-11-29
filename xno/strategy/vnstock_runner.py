@@ -12,7 +12,7 @@ import logging
 from xno.utils.stock import round_to_lot
 
 
-class StockRunner(StrategyRunner):
+class VnStockRunner(StrategyRunner):
     _hold_days = timedelta(days=3)
     _lot_size = 100
     def __init__(

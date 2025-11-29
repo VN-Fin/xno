@@ -404,7 +404,7 @@ class StrategyRunner(ABC):
         :return:
         """
         if self.bt_summary is None:
-            from xno.backtest.bt import BacktestCalculator
+            from xno.backtest.calculator import BacktestCalculator
 
             bt_input = self.get_backtest_input()
             bt_calculator = BacktestCalculator(bt_input)

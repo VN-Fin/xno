@@ -8,12 +8,14 @@ class TypeTradeMode(enum.IntEnum):
 
 
 class TypeMarket(enum.StrEnum):
+    Default = "D"
     Stock = "S"
     Crypto = "C"
     Forex = "F"
     Index = "I"
 
 class TypeContract(enum.StrEnum):
+    Default = "D"
     Spot = "S"
     Future = "F"
     Option = "O"

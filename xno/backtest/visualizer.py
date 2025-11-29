@@ -14,7 +14,7 @@ class StrategyVisualizer:
         if not hasattr(runner, 'bt_summary') or runner.bt_summary is None:
             # Trigger backtest summary if missing
             if hasattr(runner, 'backtest'):
-                summary = runner.backtest()
+                summary = runner.get_backtest()
             else:
                 raise ValueError("Runner must have .bt_summary or a .backtest() method!")
         else:
@@ -55,7 +55,6 @@ class StrategyVisualizer:
         df = pd.DataFrame(self.state_history)
         df.set_index('candles', inplace=True)
         df.index = pd.to_datetime(df.index)
-
 
         df = df.sort_index()
         performance = self.performance_summary()

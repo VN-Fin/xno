@@ -1,17 +1,21 @@
 """Derivative trading runner"""
 from abc import abstractmethod
 from typing import List
-
+from xno.backtest import BacktestVnFutures
 from xno.strategy.strategy_runner import StrategyRunner
 from xno.models import (
-    AllowedAction, AllowedTradeMode,
-    AdvancedConfig, AllowedEngine,
-    StrategyConfig, AllowedSymbolType,
+    AdvancedConfig,
+    StrategyConfig,
+    TypeAction,
+    TypeMarket,
+    TypeContract,
+    TypeTradeMode,
+    TypeEngine,
 )
 import logging
 from xno.utils.stock import round_to_lot
 
-class DerivativeRunner(StrategyRunner):
+class VnFutureRunner(StrategyRunner):
     _lot_size = 1  # Derivatives typically trade in units of 1 contract
     def __init__(
             self,
@@ -19,8 +23,13 @@ class DerivativeRunner(StrategyRunner):
             re_run: bool,
             send_data: bool,
     ):
-        super().__init__(config, re_run, send_data)
-        self.max_contracts = self.init_cash // 25_000_000  # Fixed for derivatives
+        super().__init__(
+            config,
+            re_run,
+            send_data,
+            BacktestVnFutures
+        )
+        self.max_contracts = self.init_cash // BacktestVnFutures.price_per_contract  # Fixed for derivatives
 
     @abstractmethod
     def __generate_signal__(self) -> List[float]:
@@ -36,7 +45,7 @@ class DerivativeRunner(StrategyRunner):
         3. Position changes directly based on signal delta.
         4. Position size = current_weight * max_contracts
         """
-        self.current_state.current_action = AllowedAction.Hold
+        self.current_state.current_action = TypeAction.Hold
         current_price = self.prices[time_idx]
         current_time = self.times[time_idx]
         if current_time < self.run_to:
@@ -58,14 +67,14 @@ class DerivativeRunner(StrategyRunner):
             self.current_state.current_weight += updated_weight
             current_trade_size = round_to_lot(updated_weight * self.max_contracts, self._lot_size)
             self.current_state.current_position += current_trade_size
-            self.current_state.current_action = AllowedAction.Buy
+            self.current_state.current_action = TypeAction.Buy
         elif updated_weight < 0:
             # Sell / Increase short position (or reduce long)
             logging.debug(f"[{current_time}] Sell logic triggered: signal={sig:.2f}")
             self.current_state.current_weight += updated_weight
             current_trade_size = round_to_lot(updated_weight * self.max_contracts, self._lot_size)  # Negative = short
             self.current_state.current_position += current_trade_size
-            self.current_state.current_action = AllowedAction.Sell
+            self.current_state.current_action = TypeAction.Sell
 
         # Update the current trading state
         self.current_state.current_price = current_price
@@ -84,7 +93,7 @@ class DerivativeRunner(StrategyRunner):
 
 
 if __name__ == "__main__":
-    class CustomDerivativeRunner(DerivativeRunner):
+    class CustomDerivativeRunner(VnFutureRunner):
         def __generate_signal__(self) -> List[float]:
             # Example: Generate random signals for demonstration
             import numpy as np
@@ -106,20 +115,21 @@ if __name__ == "__main__":
 
 
     # Example usage
-    config = StrategyConfig(
+    c = StrategyConfig(
         strategy_id="fad40f3b-52a7-44d1-99cb-8d4b5aa257c5",
         symbol="VN30F1M",
-        symbol_type=AllowedSymbolType.Derivative,
+        market=TypeMarket.Default,
+        contract=TypeContract.Future,
         timeframe="5min",
         init_cash=500_000_000,
         run_from="2025-01-01 09:00:00",
         run_to="2025-08-31 15:00:00",
-        mode=AllowedTradeMode.BackTrade,
+        mode=TypeTradeMode.Train,
         advanced_config=AdvancedConfig(),
-        engine=AllowedEngine.XQuant
+        engine=TypeEngine.XQuant
     )
     runner = CustomDerivativeRunner(
-        config=config,
+        config=c,
         re_run=False,
         send_data=True,
     )
@@ -127,3 +137,4 @@ if __name__ == "__main__":
     logging.info(f"Run stats: {runner.stats()}")
     logging.info(f"Backtest: {runner.backtest()}")
     runner.visualize()
+    runner.complete()

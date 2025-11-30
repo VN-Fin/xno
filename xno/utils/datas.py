@@ -1,6 +1,6 @@
 import datetime
 
-from xno.data import OhlcvDataManager
+from xno.data.ohlcv import OhlcvDataManager
 
 
 def load_data(symbol, resolution, start, factor=1):

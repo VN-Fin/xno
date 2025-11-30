@@ -1,24 +1,54 @@
-from pydantic import BaseModel, Field
+from dataclasses import dataclass
+
+__all__ = ["TradePerformance"]
+
+from xno.utils.struct import DefaultStruct
 
 
-class TradePerformance(BaseModel):
-    avg_return: float | None = Field(None, description="Average return per period")
-    cumulative_return: float | None = Field(None, description="Cumulative return over the period")
-    cvar: float | None = Field(None, description="Conditional Value at Risk")
-    gain_to_pain_ratio: float | None = Field(None, description="Gain to Pain Ratio")
-    kelly_criterion: float | None = Field(None, description="Kelly Criterion")
-    max_drawdown: float | None = Field(None, description="Maximum Drawdown")
-    omega: float | None = Field(None, description="Omega Ratio")
-    profit_factor: float | None = Field(None, description="Profit Factor")
-    recovery_factor: float | None = Field(None, description="Recovery Factor")
-    sharpe: float | None = Field(None, description="Sharpe Ratio")
-    sortino: float | None = Field(None, description="Sortino Ratio")
-    tail_ratio: float | None = Field(None, description="Tail Ratio")
-    ulcer_index: float | None = Field(None, description="Ulcer Index")
-    var: float | None = Field(None, description="Value at Risk")
-    volatility: float | None = Field(None, description="Volatility")
-    win_loss_ratio: float | None = Field(None, description="Win/Loss Ratio")
-    win_rate: float | None = Field(None, description="Win Rate")
-    annual_return: float | None = Field(None, description="Annualized Return")
-    calmar: float | None = Field(None, description="Calmar Ratio")
+@dataclass
+class TradePerformance(DefaultStruct):
+    avg_return: float | None
+    cumulative_return: float | None
+    cvar: float | None
+    gain_to_pain_ratio: float | None
+    kelly_criterion: float | None
+    max_drawdown: float | None
+    omega: float | None
+    profit_factor: float | None
+    recovery_factor: float | None
+    sharpe: float | None
+    sortino: float | None
+    tail_ratio: float | None
+    ulcer_index: float | None
+    var: float | None
+    volatility: float | None
+    win_loss_ratio: float | None
+    win_rate: float | None
+    annual_return: float | None
+    calmar: float | None
 
+
+if __name__ == "__main__":
+    import numpy as np
+    st = TradePerformance(
+        avg_return=np.float64(3.0),
+        cumulative_return=np.nan,
+        cvar=3.0,
+        gain_to_pain_ratio=3.0,
+        kelly_criterion=3.0,
+        max_drawdown=3.0,
+        omega=3.0,
+        profit_factor=3.0,
+        recovery_factor=3.0,
+        sharpe=3.0,
+        sortino=3.0,
+        tail_ratio=3.0,
+        ulcer_index=3.0,
+        var=3.0,
+        volatility=3.0,
+        win_loss_ratio=3.0,
+        win_rate=3.0,
+        annual_return=3.0,
+        calmar=3.0,
+    )
+    print(st.to_json())

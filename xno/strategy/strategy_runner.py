@@ -1,16 +1,20 @@
 from abc import abstractmethod, ABC
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Type
 
 from confluent_kafka import Producer
 
 from xno import settings
-from xno.models import StrategyTradeSummary, StrategyConfig, AllowedSymbolType, AdvancedConfig
+from xno.backtest.common import BaseBacktest
 from xno.connectors.rd import RedisClient
 from xno.models import (
     StrategyState,
     StrategySignal,
-    AllowedAction,
-    FieldInfo, AllowedEngine,
+    TypeAction,
+    FieldInfo,
+    TypeEngine,
+    AdvancedConfig,
+    StrategyTradeSummary,
+    StrategyConfig, TypeMarket, TypeContract
 )
 import pandas as pd
 import logging
@@ -22,8 +26,9 @@ from xno.utils.dc import timing
 from xno.utils.stream import delivery_report
 from xno.data.all_data_final import AllData
 import threading
+from xno.backtest import StrategyVisualizer
 
-from xno.models import AllowedTradeMode
+from xno.models import TypeTradeMode
 
 
 _local = threading.local()
@@ -36,6 +41,10 @@ def get_producer():
     return _local.producer
 
 
+def get_bt_class():
+    pass
+
+
 class StrategyRunner(ABC):
     """
     The base class for running a trading strategy.
@@ -45,6 +54,7 @@ class StrategyRunner(ABC):
             config: StrategyConfig,
             re_run: bool,
             send_data: bool,
+            bt_cls: Type[BaseBacktest]
     ):
         """
         Initialize the StrategyRunner.
@@ -52,17 +62,23 @@ class StrategyRunner(ABC):
         :param re_run: re-run or continue from last checkpoint. If re-run, all data will be sent again.
         :param send_data: whether to send data to Kafka/Redis
         """
+        self.bt_cls = bt_cls
         self.cfg = config
         if self.cfg is None:
             raise RuntimeError(f"Strategy config not found for strategy_id={self.strategy_id} and mode={self.mode}")
         else:
-            self.run_to = pd.Timestamp(self.cfg.run_to)
-            self.run_from = pd.Timestamp(self.cfg.run_from)
+            try:
+                self.run_to = pd.Timestamp(self.cfg.run_to)
+                self.run_from = pd.Timestamp(self.cfg.run_from)
+            except ValueError:
+                raise RuntimeError(f"Invalid run_to {self.cfg.run_to} or run_from {self.cfg.run_from}. Values must be in datetime format.")
+
             self.symbol = self.cfg.symbol
             self.timeframe = self.cfg.timeframe
             self.init_cash = self.cfg.init_cash
             self.run_engine = self.cfg.engine
-            self.symbol_type = self.cfg.symbol_type
+            self.market = self.cfg.market
+            self.contract = self.cfg.contract
             self.strategy_id = config.strategy_id
             self.mode = config.mode
 
@@ -90,7 +106,7 @@ class StrategyRunner(ABC):
         self.ht_times: List[pd.Timestamp | str] = []
         self.ht_positions: List[float] = []
         self.ht_trade_sizes: List[float] = []
-        self.ht_actions: List[str] = []
+        self.ht_actions: List[TypeAction] = []
         # Data fields to load
         self.data_fields: Dict[str, FieldInfo] = {}
         self.bt_summary: Optional[StrategyTradeSummary] = None
@@ -122,11 +138,13 @@ class StrategyRunner(ABC):
     def get_backtest_input(self) -> BacktestInput:
         return BacktestInput(
             bt_mode=self.mode,
+            symbol=self.symbol,
             actions=self.ht_actions,
             strategy_id=self.strategy_id,
             re_run=self.re_run,
             book_size=self.init_cash,
-            symbol_type=self.symbol_type,
+            market=self.market,
+            contract=self.contract,
             times=np.array(self.times, dtype='datetime64[ns]'),
             prices=np.array(self.prices, dtype=np.float64),
             positions=np.array(self.ht_positions, dtype=np.float64),
@@ -194,7 +212,7 @@ class StrategyRunner(ABC):
 
         # Filter data by run_from if specified
         if self.run_from:
-            self.datas = self.datas[self.datas.index >= self.run_from]
+            self.datas = self.datas[self.datas.index >= self.run_from.__str__()]
 
         logging.info(f"Total loaded data shape: {self.datas.shape}, columns: {list(self.datas.columns)}")
 
@@ -212,7 +230,7 @@ class StrategyRunner(ABC):
         only if the signal has changed.
         """
         # Double check mode
-        if self.mode != AllowedTradeMode.LiveTrade:
+        if self.mode != TypeTradeMode.Live:
             logging.info(f"Mode is {self.mode}, skipping sending live signal for strategy_id={self.strategy_id}")
             return
         state = self.current_state
@@ -223,7 +241,8 @@ class StrategyRunner(ABC):
         current_signal = StrategySignal(
             strategy_id=state.strategy_id,
             symbol=state.symbol,
-            symbol_type=state.symbol_type,
+            market=self.market,
+            contract=self.contract,
             candle=state.candle,
             current_price=state.current_price,
             current_weight=state.current_weight,
@@ -233,14 +252,14 @@ class StrategyRunner(ABC):
         )
         if prev_raw is not None:
             # Load signal
-            prev_signal = StrategySignal.model_validate_json(prev_raw)
+            prev_signal = StrategySignal.from_str(prev_raw)
             if current_signal == prev_signal:
                 # Skip logging each time; use debug for quiet mode
                 logging.debug(f"No signal change for {strategy_id}, skip sending.")
                 return
 
         # Serialize once
-        signal_json = current_signal.to_json_str()
+        signal_json = current_signal.to_json()
         # Send to Kafka
         self.producer.produce(
             self.kafka_latest_signal_topic,
@@ -262,10 +281,10 @@ class StrategyRunner(ABC):
         :return:
         """
         # Double check mode
-        if self.mode != AllowedTradeMode.LiveTrade:
+        if self.mode != TypeTradeMode.Live:
             logging.info(f"Mode is {self.mode}, skipping sending live state for strategy_id={self.strategy_id}")
             return
-        current_state_str = self.current_state.to_json_str()
+        current_state_str = self.current_state.to_json()
         logging.debug(f"Sending latest state {current_state_str}")
         self.producer.produce(
             self.kafka_latest_state_topic,
@@ -283,7 +302,7 @@ class StrategyRunner(ABC):
     def __done__(self):
         # Send signal [Optional]
         if self.send_data:
-            if self.current_state.bt_mode == AllowedTradeMode.LiveTrade:
+            if self.current_state.bt_mode == TypeTradeMode.Live:
                 self.__send_signal__()
                 self.__send_state__()
         else:
@@ -313,14 +332,15 @@ class StrategyRunner(ABC):
         self.current_state = StrategyState(
             strategy_id=self.strategy_id,
             symbol=self.symbol,
-            symbol_type=self.symbol_type,
+            market=self.market,
+            contract=self.contract,
             candle=self.times[0],
             run_from=self.run_from,
             run_to=self.run_to,
             current_price=0.0,
             current_position=0.0,
             current_weight=0.0,
-            current_action=AllowedAction.Hold,
+            current_action=TypeAction.Hold,
             trade_size=0.0,
             bt_mode=self.mode,
             t0_size=0.0,
@@ -401,10 +421,8 @@ class StrategyRunner(ABC):
         :return:
         """
         if self.bt_summary is None:
-            from xno.backtest.bt import BacktestCalculator
-
             bt_input = self.get_backtest_input()
-            bt_calculator = BacktestCalculator(bt_input)
+            bt_calculator = self.bt_cls(bt_input)
             self.bt_summary = bt_calculator.summarize()
         return self.bt_summary
 
@@ -417,15 +435,12 @@ class StrategyRunner(ABC):
         if self.bt_summary is None:
             self.backtest()
 
-        # bt_input = self.get_backtest_input()
-        from xno.backtest import StrategyVisualizer
         visualizer = StrategyVisualizer(self, name=name or self.strategy_id)
         visualizer.visualize()
 
 
 if __name__ == "__main__":
-    from xno.data import Fields
-
+    from xno.backtest import BacktestVnStocks
 
     # Test class for demonstrating add_field and load_data functionality
     class TestStrategyRunner(StrategyRunner):
@@ -445,14 +460,15 @@ if __name__ == "__main__":
     strategy_config = StrategyConfig(
         strategy_id="test",
         symbol="SSI",
-        symbol_type=AllowedSymbolType.Stock,
+        market=TypeMarket.Stock,
+        contract=TypeContract.Default,
         timeframe="D",
         init_cash=1000000000,
         run_from="2023-01-01",
         run_to="2024-12-31",
-        mode=AllowedTradeMode.BackTrade,
+        mode=TypeTradeMode.Train,
         advanced_config=AdvancedConfig(),
-        engine=AllowedEngine.TABot,
+        engine=TypeEngine.TABot,
 
     )
 
@@ -461,36 +477,7 @@ if __name__ == "__main__":
             config=strategy_config,
             re_run=False,
             send_data=False,
-        )
-
-        runner.add_field(
-            field_id="income_statement_Lợi nhuận thuần_SSI",
-            field_name=Fields.IncomeStatement.LOI_NHUAN_THUAN,
-            ticker="SSI"
-        )
-
-        runner.add_field(
-            field_id="ratio_P/E_SSI",
-            field_name=Fields.Ratio.P_E,
-            ticker="SSI"
-        )
-
-        runner.add_field(
-            field_id="ratio_ROE_SSI",
-            field_name=Fields.Ratio.ROE_PERCENT,
-            ticker="SSI"
-        )
-
-        runner.add_field(
-            field_id="income_statement_Lợi nhuận thuần_ACB",
-            field_name=Fields.IncomeStatement.LOI_NHUAN_THUAN,
-            ticker="ACB"
-        )
-
-        runner.add_field(
-            field_id="ratio_P/E_ACB",
-            field_name=Fields.Ratio.P_E,
-            ticker="ACB"
+            bt_cls=BacktestVnStocks
         )
 
         runner.add_field(
@@ -500,7 +487,9 @@ if __name__ == "__main__":
         )
         runner.__setup__()
         runner.__load_data__()
-        logging.info(f"fThe datas:{runner.datas}")
+        logging.info(f"The datas:\n{runner.datas}")
+        runner.run()
+        runner.backtest()
 
     except Exception as e:
         print(f"\nERROR: {e}")

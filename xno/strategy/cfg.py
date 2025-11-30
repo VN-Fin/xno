@@ -1,5 +1,4 @@
 import logging
-import uuid
 from typing import Iterable
 
 from cachetools.func import ttl_cache
@@ -9,30 +8,32 @@ from xno import settings
 from xno.connectors.semaphore import DistributedSemaphore
 from xno.connectors.sql import SqlSession
 from xno.models import AdvancedConfig, StrategyConfig
-from xno.models.tp import AllowedTradeMode, AllowedEngine
+from xno.models import TypeTradeMode, TypeEngine
 from contextlib import ExitStack
+
+live_strategy_query = text("""
+    SELECT
+        id,
+        symbol,
+        timeframe,
+        live as result,
+        advanced_config as advanced_config,
+        engine as engine
+    FROM alpha.strategy_overview
+    WHERE engine = :engine AND symbol_type = :symbol_type
+    ORDER BY symbol, id
+""")
+
 
 class StrategyConfigLoader:
     @classmethod
     def get_live_strategy_configs(cls, symbol_type, engine) -> Iterable[StrategyConfig]:
-        query = f"""
-            SELECT
-                id,
-                symbol,
-                timeframe,
-                live as result,
-                advanced_config as advanced_config,
-                engine as engine
-            FROM alpha.strategy_overview
-            WHERE engine = :engine AND symbol_type = :symbol_type
-            ORDER BY symbol, id
-        """
         with ExitStack() as stack:
             # Lock to ensure thread-safe read
             stack.enter_context(DistributedSemaphore())
             session = stack.enter_context(SqlSession(settings.execution_db_name))
             result_iter = session.execute(
-                text(query),
+                live_strategy_query,
                 {"engine": engine, "symbol_type": symbol_type},
             )
 
@@ -51,19 +52,20 @@ class StrategyConfigLoader:
             yield StrategyConfig(
                 strategy_id=str(row.id),
                 symbol=row.symbol,
-                symbol_type=symbol_type,
+                contract=row.contract,
+                market=row.market,
                 timeframe=row.timeframe,
                 init_cash=init_cash,
                 run_from=run_from,
                 run_to=run_to,
-                mode=AllowedTradeMode.LiveTrade,
+                mode=TypeTradeMode.Live,
                 advanced_config=AdvancedConfig(**row.advanced_config),
                 engine=row.engine,
             )
 
     @classmethod
     @ttl_cache(ttl=3600 * 8, maxsize=1000000)  # Cache for 8 hours
-    def get_config(cls, strategy_id: str, mode: AllowedTradeMode) -> StrategyConfig | None:
+    def get_config(cls, strategy_id: str, mode: TypeTradeMode) -> StrategyConfig | None:
         logging.info(f"Getting config for strategy_id={strategy_id}, mode={mode}")
         if mode == AllowedTradeMode.BackTrade:
             column = "backtest"
@@ -120,10 +122,10 @@ if __name__ == "__main__":
     # Initial load
     # Example usage
     config = StrategyConfigLoader.get_config("1569c66133af50d05a5c45715031fcc8", AllowedTradeMode.BackTrade)
-    print(config.model_dump_json())  # to string
+    print(config.to_json())  # to string
     print("=====================================================================================")
     config = StrategyConfigLoader.get_config("94871eaf8becd88290130c77a90fb4a5", AllowedTradeMode.BackTrade)
-    print(config.model_dump_json())  # to string
+    print(config.to_json())  # to string
 
     configs = StrategyConfigLoader.get_live_strategy_configs("S", AllowedEngine.AIBot)
     print("Live strategy config len:", len(list(configs)))

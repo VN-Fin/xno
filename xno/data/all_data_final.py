@@ -17,7 +17,7 @@ class AllData:
     def add_field(self, field_name: str) -> 'AllData':
         self.fields.add(field_name)
 
-        ohlcv_values = [f.value for f in Fields.OHLCV]
+        ohlcv_values = [f for f in Fields.OhlcvFields]
         if field_name in ohlcv_values:
             self.ohlcv_fields.add(field_name)
         else:

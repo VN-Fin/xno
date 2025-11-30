@@ -3,16 +3,17 @@ from abc import abstractmethod
 from datetime import timedelta
 from typing import List
 
+from xno.backtest import BacktestVnStocks
 from xno.strategy.strategy_runner import StrategyRunner
 from xno.models import (
-    AllowedAction, StrategyConfig, AllowedSymbolType, AdvancedConfig, AllowedEngine,
+    StrategyConfig, AdvancedConfig, TypeAction, TypeMarket, TypeContract, TypeTradeMode, TypeEngine
 )
 import logging
 
 from xno.utils.stock import round_to_lot
 
 
-class StockRunner(StrategyRunner):
+class VnStockRunner(StrategyRunner):
     _hold_days = timedelta(days=3)
     _lot_size = 100
     def __init__(
@@ -21,7 +22,12 @@ class StockRunner(StrategyRunner):
             re_run: bool,
             send_data: bool,
     ):
-        super().__init__(config, re_run, send_data)
+        super().__init__(
+            config,
+            re_run,
+            send_data,
+            BacktestVnStocks
+        )
     @abstractmethod
     def __generate_signal__(self) -> List[float]:
         raise NotImplementedError("Implement in subclass to generate signals.")
@@ -37,7 +43,7 @@ class StockRunner(StrategyRunner):
         5. Shares are computed based on the initial cash, current price, and lot size.
         6. If conditions for selling are not met, the signal is ignored until eligible.
         """
-        self.current_state.current_action = AllowedAction.Hold
+        self.current_state.current_action = TypeAction.Hold
         current_price = self.prices[time_idx]  # Get the current price from the history prices]
         current_time = self.times[time_idx]   # Current day from the timestamp
         if current_time < self.run_to:
@@ -96,14 +102,14 @@ class StockRunner(StrategyRunner):
                 self.current_state.current_position -= current_trade_size  # Update total shares held
                 self.current_state.current_weight -= can_sell_weight
                 self.current_state.pending_sell_weight = max(self.current_state.pending_sell_weight - can_sell_weight, 0)  # Reduce pending sell position
-                self.current_state.current_action = AllowedAction.Sell  # Set action to sell
+                self.current_state.current_action = TypeAction.Sell  # Set action to sell
         else: # Handle buy logic
             logging.debug(f"Entering buy logic at {current_time} with weight {sig}")
             self.current_state.current_weight += updated_weight  # Update current weight
             current_trade_size = round_to_lot(self.current_state.current_weight * current_max_shares, self._lot_size)
             self.current_state.t0_size += current_trade_size  # Update T0 position
             self.current_state.current_position += current_trade_size  # Update total shares held
-            self.current_state.current_action = AllowedAction.Buy  # Set action to buy
+            self.current_state.current_action = TypeAction.Buy  # Set action to buy
         # Update the current state with price and time
         self.current_state.current_price = current_price
         self.current_state.candle = current_time
@@ -112,12 +118,10 @@ class StockRunner(StrategyRunner):
 
 
 if __name__ == "__main__":
-    from xno.data import Fields
-    from xno.models import AllowedTradeMode
 
 
     # Test class for demonstrating add_field and load_data functionality
-    class TestStrategyRunner(StockRunner):
+    class TestStrategyRunner(VnStockRunner):
         """
         Test implementation of StrategyRunner to test add_field and load_data
         """
@@ -143,15 +147,15 @@ if __name__ == "__main__":
     strategy_config = StrategyConfig(
         strategy_id="test",
         symbol="SSI",
-        symbol_type=AllowedSymbolType.Stock,
+        market=TypeMarket.Stock,
+        contract=TypeContract.Default,
         timeframe="D",
         init_cash=1000000000,
         run_from="2023-01-01",
         run_to="2024-12-31",
-        mode=AllowedTradeMode.LiveTrade,
+        mode=TypeTradeMode.Live,
         advanced_config=AdvancedConfig(),
-        engine=AllowedEngine.TABot,
-
+        engine=TypeEngine.Default,
     )
 
     try:

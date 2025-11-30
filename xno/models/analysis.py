@@ -1,19 +1,48 @@
-from pydantic import BaseModel, Field
+from dataclasses import dataclass
+
+__all__ = ["TradeAnalysis"]
+
+from xno.utils.struct import DefaultStruct
 
 
-class TradeAnalysis(BaseModel):
-    start_value: float | None = Field(None, description="Start Portfolio Value")
-    end_value: float | None = Field(None, description="End Portfolio Value")
-    total_return: float | None = Field(None, description="Total Return")
-    benchmark_return: float | None = Field(None, description="Benchmark Return")
-    total_fee: float | None = Field(None, description="Total Fees Paid")
-    total_trades: int | None = Field(None, description="Total Number of Trades")
-    total_closed_trades: int | None = Field(None, description="Total Number of Closed Trades")
-    total_open_trades: int | None = Field(None, description="Total Number of Open Trades")
-    open_trade_pnl: float | None = Field(None, description="Open Trade PnL")
-    best_trade: float | None = Field(None, description="Best Trade Return")
-    worst_trade: float | None = Field(None, description="Worst Trade Return")
-    avg_win_trade: float | None = Field(None, description="Average Winning Trade Return")
-    avg_loss_trade: float | None = Field(None, description="Average Losing Trade Return")
-    avg_win_trade_duration: float | None = Field(None, description="Average Winning Trade Duration")
-    avg_loss_trade_duration: float | None = Field(None, description="Average Losing Trade Duration")
+@dataclass
+class TradeAnalysis(DefaultStruct):
+    start_value: float | None
+    end_value: float | None
+    total_return: float | None
+    benchmark_return: float | None
+    total_fee: float | None
+    total_trades: int | None
+    total_closed_trades: int | None
+    total_open_trades: int | None
+    open_trade_pnl: float | None
+    best_trade: float | None
+    worst_trade: float | None
+    avg_win_trade: float | None
+    avg_loss_trade: float | None
+    avg_win_trade_duration: float | None
+    avg_loss_trade_duration: float | None
+
+
+if __name__ == "__main__":
+    import numpy as np
+
+    st = TradeAnalysis(
+        start_value=np.float64(0.1),
+        end_value=np.nan,
+        total_return=0.1,
+        benchmark_return=0.1,
+        total_fee=0.1,
+        total_trades=1,
+        total_closed_trades=1,
+        total_open_trades=1,
+        open_trade_pnl=0.1,
+        best_trade=0.1,
+        worst_trade=0.1,
+        avg_win_trade=0.1,
+        avg_loss_trade=0.1,
+        avg_win_trade_duration=0.1,
+        avg_loss_trade_duration=0.1,
+    )
+
+    print(st.to_json())

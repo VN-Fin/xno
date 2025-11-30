@@ -40,11 +40,11 @@ class BacktestVnStocks(BaseBacktest):
 
         bm_shares = self.init_cash / self.prices[0]
         initial_fee = bm_shares * self.prices[0] * self.fee_rate
-        bm_equity = bm_shares * self.prices - initial_fee
-        bm_returns = np.zeros_like(bm_equity)
-        bm_returns[1:] = safe_divide(bm_equity[1:] - bm_equity[:-1], bm_equity[:-1])
-        bm_cumret = compound_returns(bm_returns)
-        bm_pnl = bm_equity - self.init_cash
+        self.bm_equities = bm_shares * self.prices - initial_fee
+        self.bm_returns = np.zeros_like(self.bm_equities)
+        self.bm_returns[1:] = safe_divide(self.bm_equities[1:] - self.bm_equities[:-1], self.bm_equities[:-1])
+        self.bm_cumrets = compound_returns(self.bm_returns)
+        self.bm_pnls = self.bm_returns - self.init_cash
 
         return BacktestResult(
             times=self.times,
@@ -56,8 +56,8 @@ class BacktestVnStocks(BaseBacktest):
             pnl=self.pnls,
             fees=self.fees,
             equity_curve=self.equities,
-            bm_equities=bm_equity,
-            bm_returns=bm_returns,
-            bm_cumret=bm_cumret,
-            bm_pnl=bm_pnl
+            bm_equities=self.bm_equities,
+            bm_returns=self.bm_returns,
+            bm_cumret=self.bm_cumrets,
+            bm_pnl=self.bm_pnls
         )

@@ -4,7 +4,14 @@ from typing import Optional, Dict, List, Any
 
 import numpy as np
 
-from xno.models import TradeAnalysis, TradePerformance, BacktestInput, StrategyTradeSummary, TypeTradeMode
+from xno.models import (
+    TradeAnalysis,
+    TradePerformance,
+    BacktestInput,
+    StrategyTradeSummary,
+    TypeTradeMode,
+    StateHistory
+)
 from xno.models.bt_result import BacktestResult
 import quantstats as qs
 import pandas as pd
@@ -29,6 +36,7 @@ class BaseBacktest(abc.ABC):
             inp: BacktestInput
     ):
         self.bt_mode = TypeTradeMode(inp.bt_mode)
+        self.actions = inp.actions
         self.strategy_id = inp.strategy_id
         self.init_cash = inp.book_size
         self.times = inp.times
@@ -41,6 +49,10 @@ class BaseBacktest(abc.ABC):
         self.fees: np.ndarray | None = None
         self.pnls: np.ndarray | None = None
         self.equities: np.ndarray | None = None
+        self.bm_returns: np.ndarray | None = None
+        self.bm_pnls: np.ndarray | None = None
+        self.bm_cumrets: np.ndarray | None = None
+        self.bm_equities: np.ndarray | None = None
         # tracking
         self.trade_analysis: Optional[TradeAnalysis] = None
         self.performance: Optional[TradePerformance] = None
@@ -141,6 +153,22 @@ class BaseBacktest(abc.ABC):
         return self.performance
 
     def summarize(self) -> StrategyTradeSummary:
+        self.state_history = StateHistory(
+            candles=self.times.tolist(),
+            prices=self.prices.tolist(),
+            actions=self.actions,
+            positions=self.positions.tolist(),
+            trade_sizes=self.trade_sizes.tolist(),
+            returns=self.returns.tolist(),
+            pnls=self.pnls.tolist(),
+            cumrets=self.cum_rets.tolist(),
+            balances=self.equities.tolist(),
+            fees=self.fees.tolist(),
+            bm_returns=self.bm_returns.tolist(),
+            bm_pnls=self.bm_pnls.tolist(),
+            bm_cumrets=self.bm_cumrets.tolist(),
+            bm_balances=self.bm_equities.tolist(),
+        )
         return StrategyTradeSummary(
             strategy_id=self.strategy_id,
             init_cash=self.init_cash,

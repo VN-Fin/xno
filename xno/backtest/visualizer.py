@@ -2,6 +2,8 @@ from typing import Dict
 import logging
 import pandas as pd
 
+from xno.models import StateHistory
+
 
 class StrategyVisualizer:
     def __init__(self, runner, name: str = None):
@@ -20,7 +22,7 @@ class StrategyVisualizer:
         else:
             summary = runner.bt_summary
         # Extract info
-        self.state_history = summary.state_history  # Now a dict of lists
+        self.state_history: StateHistory = summary.state_history  # Now a dict of lists
         self.performance = getattr(summary, 'performance', None)
         self.analysis = getattr(summary, 'analysis', None)
         self.name = name or getattr(runner, 'strategy_id', None) or runner.__class__.__name__
@@ -49,14 +51,11 @@ class StrategyVisualizer:
         }
 
     def visualize(self):
-        if not self.state_history or len(next(iter(self.state_history.values()))) == 0:
+        if len(self.state_history.candles) == 0:
             logging.warning("No backtest data available to visualize.")
             return
-        df = pd.DataFrame(self.state_history)
-        df.set_index('candles', inplace=True)
-        df.index = pd.to_datetime(df.index)
+        df = self.state_history.get_dataframe()
 
-        df = df.sort_index()
         performance = self.performance_summary()
         metric_names = list(sorted(performance.keys()))
         metric_values = [f"{performance[m]:.4f}" if isinstance(performance[m], float) else str(performance[m]) for m in metric_names]
@@ -94,7 +93,7 @@ class StrategyVisualizer:
         ), row=2, col=1)
 
         # Buy markers
-        buy_df = df[df['actions'] == 'B'].copy()
+        buy_df = df[df['actions'] == 1].copy()
         buy_df['date_str'] = buy_df.index.strftime('%Y-%m-%d')
         buy_df['time_str'] = buy_df.index.strftime('%H:%M:%S')
         buy_df['balance_str'] = buy_df['balances'].astype(float).apply(lambda x: f"{x:,.2f}")
@@ -115,7 +114,7 @@ class StrategyVisualizer:
         ), row=2, col=1)
 
         # Sell markers
-        sell_df = df[df['actions'] == 'S'].copy()
+        sell_df = df[df['actions'] == -1].copy()
         sell_df['date_str'] = sell_df.index.strftime('%Y-%m-%d')
         sell_df['time_str'] = sell_df.index.strftime('%H:%M:%S')
         sell_df['balance_str'] = sell_df['balances'].astype(float).apply(lambda x: f"{x:,.2f}")

@@ -14,23 +14,24 @@ class TypeStage(enum.StrEnum):
     Live = "live"
 
 class TypeMarket(enum.StrEnum):
-    Default = "D"
-    Stock = "S"
-    Crypto = "C"
-    Forex = "F"
-    Index = "I"
+    Default = "default"
+    Stock = "stock"
+    Crypto = "crypto"
+    Forex = "forex"
+    Index = "index"
 
 class TypeContract(enum.StrEnum):
-    Default = "D"
-    Spot = "S"
-    Future = "F"
-    Option = "O"
+    Default = "default"
+    Spot = "spot"
+    Future = "future"
+    Option = "option"
 
 
 class TypeEngine(enum.StrEnum):
     TABot = "TA-Bot"
     AIBot = "AI-Bot"
     XQuant = "X-Quant"
+    Default = "Default"
 
 
 class TypeAction(enum.IntEnum):

@@ -1,3 +1,4 @@
+import logging
 from dataclasses import fields, MISSING
 from enum import Enum
 from dataclasses import dataclass
@@ -31,8 +32,12 @@ class DefaultStruct:
     def from_str(cls, data: str | bytes):
         raw = orjson.loads(data)
         parsed = {}
-        for f in fields(cls):
-            parsed[f.name] = parse_field(raw.get(f.name, MISSING), f.type)
+        try:
+            for f in fields(cls):
+                parsed[f.name] = parse_field(raw.get(f.name, MISSING), f.type)
+        except Exception as e:
+            logging.exception(f"Error parsing {data}. Result default None")
+            return None
         return cls(**parsed)
 
     def __eq__(self, other):

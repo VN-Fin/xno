@@ -48,11 +48,11 @@ class BacktestVnFutures(BaseBacktest):
 
         max_contracts = round_to_lot(self.init_cash / self.price_per_contract, 1)
         initial_fee = max_contracts * self.fee_rate  # Phí mua ban đầu
-        bm_pnl = price_diff * max_contracts * self.cash_per_contract
-        bm_equity = self.init_cash + np.cumsum(bm_pnl) - initial_fee  # Trừ phí ban đầu
-        bm_returns = np.zeros_like(bm_equity)
-        bm_returns[1:] = safe_divide(bm_equity[1:] - bm_equity[:-1], bm_equity[:-1])
-        bm_cumret = compound_returns(bm_returns)
+        self.bm_pnls = price_diff * max_contracts * self.cash_per_contract
+        self.bm_equities = self.init_cash + np.cumsum(self.bm_pnls) - initial_fee  # Trừ phí ban đầu
+        self.bm_returns = np.zeros_like(self.bm_equities)
+        self.bm_returns[1:] = safe_divide(self.bm_equities[1:] - self.bm_equities[:-1], self.bm_equities[:-1])
+        self.bm_cumrets = compound_returns(self.bm_returns)
 
         return BacktestResult(
             times=self.times,
@@ -64,8 +64,8 @@ class BacktestVnFutures(BaseBacktest):
             pnl=self.pnls,
             fees=self.fees,
             equity_curve=self.equities,
-            bm_equities=bm_equity,
-            bm_returns=bm_returns,
-            bm_cumret=bm_cumret,
-            bm_pnl=bm_pnl
+            bm_equities=self.bm_equities,
+            bm_returns=self.bm_returns,
+            bm_cumret=self.bm_cumrets,
+            bm_pnl=self.bm_pnls
         )

@@ -13,3 +13,4 @@ from xno.models.backtest import BacktestInput
 from xno.models.summary import StrategyTradeSummary
 from xno.models.analysis import TradeAnalysis
 from xno.models.pf import TradePerformance
+from xno.models.state_history import StateHistory, StateSeries

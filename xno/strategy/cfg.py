@@ -52,19 +52,20 @@ class StrategyConfigLoader:
             yield StrategyConfig(
                 strategy_id=str(row.id),
                 symbol=row.symbol,
-                symbol_type=symbol_type,
+                contract=row.contract,
+                market=row.market,
                 timeframe=row.timeframe,
                 init_cash=init_cash,
                 run_from=run_from,
                 run_to=run_to,
-                mode=AllowedTradeMode.LiveTrade,
+                mode=TypeTradeMode.Live,
                 advanced_config=AdvancedConfig(**row.advanced_config),
                 engine=row.engine,
             )
 
     @classmethod
     @ttl_cache(ttl=3600 * 8, maxsize=1000000)  # Cache for 8 hours
-    def get_config(cls, strategy_id: str, mode: AllowedTradeMode) -> StrategyConfig | None:
+    def get_config(cls, strategy_id: str, mode: TypeTradeMode) -> StrategyConfig | None:
         logging.info(f"Getting config for strategy_id={strategy_id}, mode={mode}")
         if mode == AllowedTradeMode.BackTrade:
             column = "backtest"

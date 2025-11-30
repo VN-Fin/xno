@@ -67,8 +67,12 @@ class StrategyRunner(ABC):
         if self.cfg is None:
             raise RuntimeError(f"Strategy config not found for strategy_id={self.strategy_id} and mode={self.mode}")
         else:
-            self.run_to = pd.Timestamp(self.cfg.run_to)
-            self.run_from = pd.Timestamp(self.cfg.run_from)
+            try:
+                self.run_to = pd.Timestamp(self.cfg.run_to)
+                self.run_from = pd.Timestamp(self.cfg.run_from)
+            except ValueError:
+                raise RuntimeError(f"Invalid run_to {self.cfg.run_to} or run_from {self.cfg.run_from}. Values must be in datetime format.")
+
             self.symbol = self.cfg.symbol
             self.timeframe = self.cfg.timeframe
             self.init_cash = self.cfg.init_cash
@@ -102,7 +106,7 @@ class StrategyRunner(ABC):
         self.ht_times: List[pd.Timestamp | str] = []
         self.ht_positions: List[float] = []
         self.ht_trade_sizes: List[float] = []
-        self.ht_actions: List[int] = []
+        self.ht_actions: List[TypeAction] = []
         # Data fields to load
         self.data_fields: Dict[str, FieldInfo] = {}
         self.bt_summary: Optional[StrategyTradeSummary] = None
@@ -134,6 +138,7 @@ class StrategyRunner(ABC):
     def get_backtest_input(self) -> BacktestInput:
         return BacktestInput(
             bt_mode=self.mode,
+            symbol=self.symbol,
             actions=self.ht_actions,
             strategy_id=self.strategy_id,
             re_run=self.re_run,
@@ -207,7 +212,7 @@ class StrategyRunner(ABC):
 
         # Filter data by run_from if specified
         if self.run_from:
-            self.datas = self.datas[self.datas.index >= self.run_from]
+            self.datas = self.datas[self.datas.index >= self.run_from.__str__()]
 
         logging.info(f"Total loaded data shape: {self.datas.shape}, columns: {list(self.datas.columns)}")
 
@@ -475,36 +480,6 @@ if __name__ == "__main__":
             bt_cls=BacktestVnStocks
         )
 
-        # runner.add_field(
-        #     field_id="income_statement_Lợi nhuận thuần_SSI",
-        #     field_name=Fields.IncomeStatement.LOI_NHUAN_THUAN,
-        #     ticker="SSI"
-        # )
-        #
-        # runner.add_field(
-        #     field_id="ratio_P/E_SSI",
-        #     field_name=Fields.Ratio.P_E,
-        #     ticker="SSI"
-        # )
-        #
-        # runner.add_field(
-        #     field_id="ratio_ROE_SSI",
-        #     field_name=Fields.Ratio.ROE_PERCENT,
-        #     ticker="SSI"
-        # )
-        #
-        # runner.add_field(
-        #     field_id="income_statement_Lợi nhuận thuần_ACB",
-        #     field_name=Fields.IncomeStatement.LOI_NHUAN_THUAN,
-        #     ticker="ACB"
-        # )
-        #
-        # runner.add_field(
-        #     field_id="ratio_P/E_ACB",
-        #     field_name=Fields.Ratio.P_E,
-        #     ticker="ACB"
-        # )
-
         runner.add_field(
             field_id="Close",
             field_name="Close",
@@ -512,7 +487,9 @@ if __name__ == "__main__":
         )
         runner.__setup__()
         runner.__load_data__()
-        logging.info(f"fThe datas:{runner.datas}")
+        logging.info(f"The datas:\n{runner.datas}")
+        runner.run()
+        runner.backtest()
 
     except Exception as e:
         print(f"\nERROR: {e}")

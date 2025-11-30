@@ -11,6 +11,7 @@ from dataclasses import dataclass
 
 __all__ = ["StrategyTradeSummary"]
 
+from xno.models.state_history import StateHistory
 from xno.utils.struct import DefaultStruct
 
 
@@ -22,14 +23,14 @@ class StrategyTradeSummary(DefaultStruct):
     to_time: DateTimeType
     analysis: TradeAnalysis
     performance: TradePerformance
-    state_history: Dict[str, List[Any]]
+    state_history: StateHistory
     bt_mode: TypeTradeMode
 
     def __repr__(self):
         return (f"StrategyTradeSummary(strategy_id={self.strategy_id}, init_cash={self.init_cash}, "
                 f"from_time={self.from_time}, to_time={self.to_time}, "
                 f"analysis={self.analysis}, performance={self.performance}), "
-                f"state_history(item/length)={len(self.state_history)}/{len(self.state_history['candle'])}, bt_mode={self.bt_mode})")
+                f"state_history(item/length)={len(self.state_history.candles)}/{len(self.state_history.candles)}, bt_mode={self.bt_mode})")
 
     def __str__(self):
         return self.__repr__()
@@ -79,7 +80,22 @@ if __name__ == "__main__":
             annual_return=None,
             calmar=None,
         ),
-        state_history={},
+        state_history=StateHistory(
+            candles=[],
+            prices=[],
+            actions=[],
+            positions=[],
+            trade_sizes=[],
+            returns=[],
+            pnls=[],
+            cumrets=[],
+            balances=[],
+            fees=[],
+            bm_returns=[],
+            bm_pnls=[],
+            bm_cumrets=[],
+            bm_balances=[],
+        ),
         bt_mode=TypeTradeMode.Simulate
     )
     print(st.to_json())

@@ -56,8 +56,14 @@ class BaseBacktest(abc.ABC):
         # tracking
         self.trade_analysis: Optional[TradeAnalysis] = None
         self.performance: Optional[TradePerformance] = None
-        self.state_history: Optional[Dict[str, List[Any]]] = None
+        self.state_history: StateHistory | None = None
         self.bt_result = self.__build__()
+
+    def state_history_series(self):
+        if self.state_history is not None:
+            return self.state_history.get_series()
+        else:
+            raise Exception("state_history is None")
 
     @abstractmethod
     def __build__(self) -> BacktestResult:

@@ -31,7 +31,7 @@ class TypeEngine(enum.StrEnum):
     Default = "Default"
 
 
-class TypeAction(enum.IntEnum):
-    Buy = 1
-    Sell = -1
-    Hold = 0
+class TypeAction(enum.StrEnum):
+    Buy = "B"
+    Sell = "S"
+    Hold = "H"

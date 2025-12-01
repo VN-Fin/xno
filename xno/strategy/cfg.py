@@ -15,6 +15,7 @@ live_strategy_query = text("""
     SELECT
         id,
         symbol,
+        symbol_type,
         timeframe,
         live as result,
         advanced_config as advanced_config,
@@ -52,8 +53,7 @@ class StrategyConfigLoader:
             yield StrategyConfig(
                 strategy_id=str(row.id),
                 symbol=row.symbol,
-                contract=row.contract,
-                market=row.market,
+                symbol_type=row.symbol_type,
                 timeframe=row.timeframe,
                 init_cash=init_cash,
                 run_from=run_from,
@@ -67,13 +67,7 @@ class StrategyConfigLoader:
     @ttl_cache(ttl=3600 * 8, maxsize=1000000)  # Cache for 8 hours
     def get_config(cls, strategy_id: str, mode: TypeTradeMode) -> StrategyConfig | None:
         logging.info(f"Getting config for strategy_id={strategy_id}, mode={mode}")
-        if mode == AllowedTradeMode.BackTrade:
-            column = "backtest"
-        elif mode == AllowedTradeMode.PaperTrade:
-            column = "paper"
-        else:
-            column = "live"
-
+        column = mode.__str__()
         query = f"""
             SELECT
                 id,
@@ -121,13 +115,13 @@ class StrategyConfigLoader:
 if __name__ == "__main__":
     # Initial load
     # Example usage
-    config = StrategyConfigLoader.get_config("1569c66133af50d05a5c45715031fcc8", AllowedTradeMode.BackTrade)
+    config = StrategyConfigLoader.get_config("1569c66133af50d05a5c45715031fcc8", TypeTradeMode.Train)
     print(config.to_json())  # to string
     print("=====================================================================================")
-    config = StrategyConfigLoader.get_config("94871eaf8becd88290130c77a90fb4a5", AllowedTradeMode.BackTrade)
+    config = StrategyConfigLoader.get_config("94871eaf8becd88290130c77a90fb4a5", TypeTradeMode.Train)
     print(config.to_json())  # to string
 
-    configs = StrategyConfigLoader.get_live_strategy_configs("S", AllowedEngine.AIBot)
+    configs = StrategyConfigLoader.get_live_strategy_configs("VnStock", TypeEngine.AIBot)
     print("Live strategy config len:", len(list(configs)))
     #
     # config = StrategyConfigLoader.get_config(uuid.uuid4().__str__(), AllowedTradeMode.BackTrade, "")

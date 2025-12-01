@@ -1,9 +1,6 @@
 from dataclasses import dataclass
 import numpy as np
-from typing import List, Type
-
-from xno.backtest import BacktestVnStocks
-from xno.backtest.common import BaseBacktest
+from typing import List, Any, Type
 from xno.models.tp import (
     TypeMarket,
     TypeContract,
@@ -20,7 +17,7 @@ from xno.utils.struct import DefaultStruct
 class BacktestInput(DefaultStruct):
     strategy_id: str
     bt_mode: TypeTradeMode
-    bt_cls: Type[BaseBacktest]
+    bt_cls: Any
     symbol : str
     market: TypeMarket
     contract: TypeContract
@@ -35,6 +32,8 @@ class BacktestInput(DefaultStruct):
 
 
 if __name__ == "__main__":
+    from xno.backtest.vn_stocks import BacktestVnStocks
+
     st = BacktestInput(
         bt_mode=TypeTradeMode.Train,
         strategy_id="strategy_id",

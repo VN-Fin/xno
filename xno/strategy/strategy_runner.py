@@ -20,6 +20,9 @@ import pandas as pd
 import logging
 import xno.utils.keys as ukeys
 import numpy as np
+from xno.tasks import capp, CeleryTaskGroups
+import pickle
+import uuid
 
 from xno.models.backtest import BacktestInput
 from xno.utils.dc import timing
@@ -399,10 +402,6 @@ class StrategyRunner(ABC):
         Use this function to send backtest task to celery worker.
         :return: None
         """
-        from xno.tasks import capp, CeleryTaskGroups
-        import pickle
-        import uuid
-
         if task_id is None:
             task_id = uuid.uuid4().hex
 

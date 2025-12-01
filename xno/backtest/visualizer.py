@@ -2,7 +2,7 @@ from typing import Dict
 import logging
 import pandas as pd
 
-from xno.models import StateHistory
+from xno.models.state_history import StateHistory
 
 
 class StrategyVisualizer:

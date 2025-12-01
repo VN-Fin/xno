@@ -11,13 +11,13 @@ from xno.utils.struct import DefaultStruct
 @dataclass
 class StateSeries(DefaultStruct):
     name: str
-    times: List[str]
+    times: List[int]
     values: List[Any]
 
 
 @dataclass
 class StateHistory(DefaultStruct):
-    candles: List[float]
+    candles: List[int]
     prices: List[float]
     actions: List[TypeAction]
     positions: List[Position]

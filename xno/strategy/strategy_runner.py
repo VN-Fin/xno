@@ -137,14 +137,15 @@ class StrategyRunner(ABC):
 
     def get_backtest_input(self) -> BacktestInput:
         return BacktestInput(
-            bt_mode=self.mode,
-            symbol=self.symbol,
-            actions=self.ht_actions,
             strategy_id=self.strategy_id,
-            re_run=self.re_run,
-            book_size=self.init_cash,
+            bt_mode=self.mode,
+            bt_cls=self.bt_cls,
+            symbol=self.symbol,
             market=self.market,
             contract=self.contract,
+            actions=self.ht_actions,
+            re_run=self.re_run,
+            book_size=self.init_cash,
             times=np.array(self.times, dtype='datetime64[ns]'),
             prices=np.array(self.prices, dtype=np.float64),
             positions=np.array(self.ht_positions, dtype=np.float64),

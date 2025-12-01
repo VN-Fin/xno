@@ -11,24 +11,25 @@ from xno.models import AdvancedConfig, StrategyConfig
 from xno.models import TypeTradeMode, TypeEngine
 from contextlib import ExitStack
 
-live_strategy_query = text("""
-    SELECT
-        id,
-        symbol,
-        symbol_type,
-        timeframe,
-        live as result,
-        advanced_config as advanced_config,
-        engine as engine
-    FROM alpha.strategy_overview
-    WHERE engine = :engine AND symbol_type = :symbol_type AND stage = 'live'
-    ORDER BY symbol, id
-""")
 
 
 class StrategyConfigLoader:
     @classmethod
     def get_live_strategy_configs(cls, symbol_type, engine) -> Iterable[StrategyConfig]:
+        live_strategy_query = text("""
+           SELECT id,
+                  symbol,
+                  symbol_type,
+                  timeframe,
+                  live            as result,
+                  advanced_config as advanced_config,
+                  engine          as engine
+           FROM alpha.strategy_overview
+           WHERE engine = :engine
+             AND symbol_type = :symbol_type
+             AND stage = 'live'
+           ORDER BY symbol, id
+       """)
         with ExitStack() as stack:
             # Lock to ensure thread-safe read
             stack.enter_context(DistributedSemaphore())
@@ -64,7 +65,6 @@ class StrategyConfigLoader:
             )
 
     @classmethod
-    @ttl_cache(ttl=3600 * 8, maxsize=1000000)  # Cache for 8 hours
     def get_config(cls, strategy_id: str, mode: TypeTradeMode) -> StrategyConfig | None:
         logging.info(f"Getting config for strategy_id={strategy_id}, mode={mode}")
         column = mode.__str__()

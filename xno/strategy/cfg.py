@@ -21,7 +21,7 @@ live_strategy_query = text("""
         advanced_config as advanced_config,
         engine as engine
     FROM alpha.strategy_overview
-    WHERE engine = :engine AND symbol_type = :symbol_type
+    WHERE engine = :engine AND symbol_type = :symbol_type AND stage = 'live'
     ORDER BY symbol, id
 """)
 

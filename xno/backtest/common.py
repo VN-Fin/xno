@@ -10,7 +10,7 @@ from xno.models import (
     BacktestInput,
     StrategyTradeSummary,
     TypeTradeMode,
-    StateHistory
+    StateHistory, StateSeries
 )
 from xno.models.bt_result import BacktestResult
 import quantstats as qs
@@ -59,7 +59,7 @@ class BaseBacktest(abc.ABC):
         self.state_history: StateHistory | None = None
         self.bt_result = self.__build__()
 
-    def state_history_series(self):
+    def state_history_series(self) -> List[StateSeries]:
         if self.state_history is not None:
             return self.state_history.get_series()
         else:

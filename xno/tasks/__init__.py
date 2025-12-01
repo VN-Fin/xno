@@ -41,4 +41,8 @@ capp.conf.update(
     result_serializer="json",
     accept_content=["json"],
     task_track_started=True,
+    worker_cancel_long_running_tasks_on_connection_loss=True,
+    task_acks_late=True,
+    task_acks_on_failure_or_timeout=True,
+    worker_prefetch_multiplier=1,
 )

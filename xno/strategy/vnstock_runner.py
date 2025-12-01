@@ -1,4 +1,5 @@
 """Migrate to new runner structure."""
+import uuid
 from abc import abstractmethod
 from datetime import timedelta
 from typing import List
@@ -145,7 +146,7 @@ if __name__ == "__main__":
 
 
     strategy_config = StrategyConfig(
-        strategy_id="test",
+        strategy_id=uuid.uuid4().hex,
         symbol="SSI",
         market=TypeMarket.Stock,
         contract=TypeContract.Default,

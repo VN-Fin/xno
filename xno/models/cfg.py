@@ -6,8 +6,7 @@ import numpy as np
 
 from xno.basic_type import DateTimeType
 from xno.models.tp import (
-    TypeMarket,
-    TypeContract,
+    TypeSymbolType,
     TypeTradeMode,
     TypeEngine
 )
@@ -36,8 +35,7 @@ class AdvancedConfig(DefaultStruct):
 class StrategyConfig(DefaultStruct):
     strategy_id: str
     symbol: str    # Trading symbol, e.g., "AAPL", "BTC-USD"
-    market: TypeMarket
-    contract: TypeContract
+    symbol_type: TypeSymbolType
     timeframe: str
     init_cash: float
     run_from: DateTimeType
@@ -51,8 +49,7 @@ if __name__ == "__main__":
     st = StrategyConfig(
         strategy_id="strategy_id",
         symbol="APPL",
-        market=TypeMarket.Stock,
-        contract=TypeContract.Spot,
+        symbol_type=TypeSymbolType.UsStock,
         timeframe="timeframe",
         init_cash=1000.0,
         run_from=datetime.datetime.now(),

@@ -7,7 +7,12 @@ from typing import List
 from xno.backtest import BacktestVnStocks
 from xno.strategy.strategy_runner import StrategyRunner
 from xno.models import (
-    StrategyConfig, AdvancedConfig, TypeAction, TypeMarket, TypeContract, TypeTradeMode, TypeEngine
+    StrategyConfig,
+    AdvancedConfig,
+    TypeAction,
+    TypeSymbolType,
+    TypeTradeMode,
+    TypeEngine
 )
 import logging
 
@@ -148,8 +153,7 @@ if __name__ == "__main__":
     strategy_config = StrategyConfig(
         strategy_id=uuid.uuid4().hex,
         symbol="SSI",
-        market=TypeMarket.Stock,
-        contract=TypeContract.Default,
+        symbol_type=TypeSymbolType.VnStock,
         timeframe="D",
         init_cash=1000000000,
         run_from="2023-01-01",

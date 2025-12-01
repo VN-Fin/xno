@@ -6,8 +6,7 @@ from xno.models.tp import (
     TypeEngine,
     TypeAction,
     TypeTradeMode,
-    TypeMarket,
-    TypeContract,
+    TypeSymbolType,
 )
 from xno.utils.struct import DefaultStruct
 
@@ -17,8 +16,7 @@ class StrategyState(DefaultStruct):
     strategy_id : str # Strategy identifier, use UUID format
     book_size: NumericType # Total cash available for trading
     symbol: str    # Trading symbol, e.g., "AAPL", "BTC-USD"
-    market: TypeMarket
-    contract: TypeContract
+    symbol_type: TypeSymbolType
     candle: DateTimeType # Current candle data
     run_from: DateTimeType # Optional: Define the time range for the strategy run
     run_to: DateTimeType # Optional: Define the time range for the strategy run
@@ -44,8 +42,7 @@ if __name__ == "__main__":
     state = TradingState(
         strategy_id="123e4567-e89b-12d3-a456-426614174000",
         symbol="HSG",
-        market=TypeMarket.Stock,
-        contract=TypeContract.Spot,
+        symbol_type=TypeSymbolType.VnStock,
         candle=datetime.datetime.now(),
         run_from=datetime.datetime.now(),
         run_to=np.datetime64(datetime.datetime.now() - datetime.timedelta(days=5)),

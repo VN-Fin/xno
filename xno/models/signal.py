@@ -4,8 +4,7 @@ from xno.basic_type import DateTimeType, NumericType
 from xno.models.tp import (
     TypeAction,
     TypeTradeMode,
-    TypeContract,
-    TypeMarket,
+    TypeSymbolType,
     TypeEngine,
 )
 import numpy as np
@@ -17,8 +16,7 @@ from xno.utils.struct import DefaultStruct
 class StrategySignal(DefaultStruct):
     strategy_id : str # Strategy identifier, use UUID format
     symbol: str    # Trading symbol, e.g., "AAPL", "BTC-USD"
-    market: TypeMarket
-    contract: TypeContract
+    symbol_type: TypeSymbolType
     candle: DateTimeType # Current candle data
     current_price: NumericType # Current price of the asset
     current_weight: NumericType # -1 to 1
@@ -61,8 +59,7 @@ if __name__ == "__main__":
     signal2 = StrategySignal(
         strategy_id="123e4567-e89b-12d3-a456-426614174000",
         symbol="AAPL",
-        market=TypeMarket.Stock,
-        contract=TypeContract.Spot,
+        symbol_type=TypeSymbolType.UsStock,
         candle="2024-01-01 10:00:00",  # different here
         current_price=150.0,
         current_weight=0.5,

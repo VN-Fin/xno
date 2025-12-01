@@ -2,8 +2,7 @@ from dataclasses import dataclass
 import numpy as np
 from typing import List, Any, Type
 from xno.models.tp import (
-    TypeMarket,
-    TypeContract,
+    TypeSymbolType,
     TypeTradeMode,
     TypeAction,
 )
@@ -19,8 +18,7 @@ class BacktestInput(DefaultStruct):
     bt_mode: TypeTradeMode
     bt_cls: Any
     symbol : str
-    market: TypeMarket
-    contract: TypeContract
+    symbol_type: TypeSymbolType
     re_run: bool
     book_size: float
     actions: List[TypeAction]
@@ -41,8 +39,7 @@ if __name__ == "__main__":
         re_run=False,
         book_size=0.1,
         symbol="BTC",
-        market=TypeMarket.Crypto,
-        contract=TypeContract.Future,
+        symbol_type=TypeSymbolType.Crypto,
         actions=[TypeAction.Buy],
         times=np.linspace(0, 100, 100),
         prices=np.linspace(0, 100, 100),

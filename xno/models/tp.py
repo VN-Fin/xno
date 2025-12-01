@@ -13,18 +13,15 @@ class TypeStage(enum.StrEnum):
     Simulate = "simulate"
     Live = "live"
 
-class TypeMarket(enum.StrEnum):
+class TypeSymbolType(enum.StrEnum):
     Default = "default"
-    Stock = "stock"
-    Crypto = "crypto"
+    UsStock = "UsStock"
+    VnStock = "VnStock"
+    VnFuture = "VnFuture"
+    VnIndex = "index"
+    CryptoSpot = "CryptoSpot"
+    CryptoFuture = "CryptoFuture"
     Forex = "forex"
-    Index = "index"
-
-class TypeContract(enum.StrEnum):
-    Default = "default"
-    Spot = "spot"
-    Future = "future"
-    Option = "option"
 
 
 class TypeEngine(enum.StrEnum):

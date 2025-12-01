@@ -7,8 +7,7 @@ from xno.models import (
     AdvancedConfig,
     StrategyConfig,
     TypeAction,
-    TypeMarket,
-    TypeContract,
+    TypeSymbolType,
     TypeTradeMode,
     TypeEngine,
 )
@@ -118,8 +117,7 @@ if __name__ == "__main__":
     c = StrategyConfig(
         strategy_id="fad40f3b-52a7-44d1-99cb-8d4b5aa257c5",
         symbol="VN30F1M",
-        market=TypeMarket.Default,
-        contract=TypeContract.Future,
+        symbol_type=TypeSymbolType.VnFuture,
         timeframe="5min",
         init_cash=500_000_000,
         run_from="2025-01-01 09:00:00",

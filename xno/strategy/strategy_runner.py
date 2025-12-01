@@ -14,7 +14,8 @@ from xno.models import (
     TypeEngine,
     AdvancedConfig,
     StrategyTradeSummary,
-    StrategyConfig, TypeMarket, TypeContract
+    StrategyConfig,
+    TypeSymbolType
 )
 import pandas as pd
 import logging
@@ -80,8 +81,7 @@ class StrategyRunner(ABC):
             self.timeframe = self.cfg.timeframe
             self.init_cash = self.cfg.init_cash
             self.run_engine = self.cfg.engine
-            self.market = self.cfg.market
-            self.contract = self.cfg.contract
+            self.symbol_type = self.cfg.symbol_type
             self.strategy_id = config.strategy_id
             self.mode = config.mode
 
@@ -144,8 +144,7 @@ class StrategyRunner(ABC):
             bt_mode=self.mode,
             bt_cls=self.bt_cls,
             symbol=self.symbol,
-            market=self.market,
-            contract=self.contract,
+            symbol_type=self.symbol_type,
             actions=self.ht_actions,
             re_run=self.re_run,
             book_size=self.init_cash,
@@ -245,8 +244,7 @@ class StrategyRunner(ABC):
         current_signal = StrategySignal(
             strategy_id=state.strategy_id,
             symbol=state.symbol,
-            market=self.market,
-            contract=self.contract,
+            symbol_type=self.symbol_type,
             candle=state.candle,
             current_price=state.current_price,
             current_weight=state.current_weight,
@@ -336,8 +334,7 @@ class StrategyRunner(ABC):
         self.current_state = StrategyState(
             strategy_id=self.strategy_id,
             symbol=self.symbol,
-            market=self.market,
-            contract=self.contract,
+            symbol_type=self.symbol_type,
             candle=self.times[0],
             run_from=self.run_from,
             run_to=self.run_to,
@@ -460,8 +457,7 @@ if __name__ == "__main__":
     strategy_config = StrategyConfig(
         strategy_id="test",
         symbol="SSI",
-        market=TypeMarket.Stock,
-        contract=TypeContract.Default,
+        symbol_type=TypeSymbolType.VnStock,
         timeframe="D",
         init_cash=1000000000,
         run_from="2023-01-01",

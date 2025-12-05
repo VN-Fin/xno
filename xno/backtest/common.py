@@ -1,6 +1,6 @@
 import abc
 from abc import abstractmethod
-from typing import Optional, List
+from typing import Optional, List, Dict
 
 import numpy as np
 
@@ -136,7 +136,7 @@ class BaseBacktest(abc.ABC):
         # tracking
         self.trade_analysis: Optional[TradeAnalysis] = None
         self.performance: Optional[TradePerformance] = None
-        self.state_history: BotStateHistory | None = None
+        self.series_metrics: Dict[str, SeriesMetric] | None = None
         # rolling defines
         self.rolling_sharpe: np.ndarray | None = None
         self.rolling_vol: np.ndarray | None = None
@@ -164,11 +164,8 @@ class BaseBacktest(abc.ABC):
     #         "rolling_corr": rolling_corr
     #     }
 
-    def state_history_series(self) -> List[StateSeries]:
-        if self.state_history is not None:
-            return self.state_history.get_series()
-        else:
-            raise Exception("state_history is None")
+    def get_series_metrics(self) -> Dict[str, SeriesMetric]:
+        return self.series_metrics
 
     @abstractmethod
     def __build__(self) -> BotBacktestResultSummary:
@@ -251,7 +248,7 @@ class BaseBacktest(abc.ABC):
 
     def summarize(self) -> BotTradeSummary:
         list_times = self.times.tolist()
-        series = {
+        self.series_metrics = {
             "actions": SeriesMetric("actions", times=list_times, values=self.actions),
             "prices": SeriesMetric("prices", times=list_times, values=self.prices),
             "returns": SeriesMetric("returns", times=list_times, values=self.returns.tolist()),
@@ -274,7 +271,7 @@ class BaseBacktest(abc.ABC):
             analysis=self.get_analysis(),
             bt_mode=self.bt_mode,
             performance=self.get_performance(),
-            series=series,
+            series=self.series_metrics,
             candles=self.times.tolist(),
         )
 

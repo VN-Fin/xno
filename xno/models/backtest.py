@@ -7,7 +7,7 @@ from xno.models.tp import (
     TypeAction,
 )
 
-__all__ = ["BacktestInput"]
+__all__ = ["BacktestInput", "BacktestOverview"]
 
 from xno.utils.struct import DefaultStruct
 

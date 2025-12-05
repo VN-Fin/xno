@@ -8,7 +8,7 @@ from xno.models.tp import (
     TypeEngine,
 )
 from xno.models.fields import FieldInfo
-from xno.models.backtest import BacktestInput
+from xno.models.backtest import *
 from xno.models.summary import BotTradeSummary, SeriesMetric
 from xno.models.analysis import TradeAnalysis
 from xno.models.pf import TradePerformance

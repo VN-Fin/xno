@@ -2,7 +2,7 @@
 from abc import abstractmethod
 from typing import List
 from xno.backtest import BacktestVnFutures
-from xno.strategy.strategy_runner import BaseRunner
+from xno.runner.base_runner import BaseRunner
 from xno.models import (
     AdvancedConfig,
     BotConfig,

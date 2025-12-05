@@ -5,7 +5,7 @@ from datetime import timedelta
 from typing import List
 
 from xno.backtest import BacktestVnStocks
-from xno.strategy.strategy_runner import BaseRunner
+from xno.runner.base_runner import BaseRunner
 from xno.models import (
     BotConfig,
     AdvancedConfig,

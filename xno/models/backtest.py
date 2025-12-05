@@ -29,6 +29,20 @@ class BacktestInput(DefaultStruct):
     trade_sizes: np.ndarray
 
 
+@dataclass
+class BacktestOverview(DefaultStruct):
+    id: str
+    time: Any
+    from_time: Any
+    to_time: Any
+    cash: float
+    bt_mode: TypeTradeMode
+    status: str
+    task_id: str
+    message: str
+    success: bool
+
+
 
 if __name__ == "__main__":
     from xno.backtest.vn_stocks import BacktestVnStocks

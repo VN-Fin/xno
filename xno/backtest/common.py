@@ -250,7 +250,7 @@ class BaseBacktest(abc.ABC):
         return self.performance
 
     def summarize(self) -> BotTradeSummary:
-        list_times = (self.times.astype('int') / 1e9).tolist()
+        list_times = self.times.tolist()
         series = {
             "actions": SeriesMetric("actions", times=list_times, values=self.actions),
             "prices": SeriesMetric("prices", times=list_times, values=self.prices),

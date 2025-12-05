@@ -11,10 +11,11 @@ import numpy as np
 import pandas as pd
 from xno.utils.struct import DefaultStruct
 
+__all__ = ["BotSignal"]
 
 @dataclass
-class StrategySignal(DefaultStruct):
-    strategy_id : str # Strategy identifier, use UUID format
+class BotSignal(DefaultStruct):
+    bot_id : str # Strategy identifier, use UUID format
     symbol: str    # Trading symbol, e.g., "AAPL", "BTC-USD"
     symbol_type: TypeSymbolType
     candle: DateTimeType # Current candle data
@@ -25,10 +26,10 @@ class StrategySignal(DefaultStruct):
     engine: TypeEngine # Trading engine being used (see AllowedEngine)
 
     def __eq__(self, other):
-        if not isinstance(other, StrategySignal):
+        if not isinstance(other, BotSignal):
             return False
 
-        if self.strategy_id != other.strategy_id:
+        if self.bot_id != other.bot_id:
             return False
 
         # compare datetime
@@ -53,11 +54,11 @@ class StrategySignal(DefaultStruct):
 
 
 if __name__ == "__main__":
-    sig_str = """{"strategy_id":"123e4567-e89b-12d3-a456-426614174000","symbol":"AAPL","market":"S","contract":"S","candle":"2024-01-01 10:00:00","current_price":150.0,"current_weight":0.5,"current_action":"B","bt_mode":3,"engine":"TA-Bot"}"""
-    signal1 = StrategySignal.from_str(sig_str)
+    sig_str = """{"bot_id":"123e4567-e89b-12d3-a456-426614174000","symbol":"AAPL","symbol_type":"UsStock","candle":"2024-01-01 10:00:00","current_price":150.0,"current_weight":0.5,"current_action":1,"bt_mode":"live","engine":"TA-Bot"}"""
+    signal1 = BotSignal.from_str(sig_str)
 
-    signal2 = StrategySignal(
-        strategy_id="123e4567-e89b-12d3-a456-426614174000",
+    signal2 = BotSignal(
+        bot_id="123e4567-e89b-12d3-a456-426614174000",
         symbol="AAPL",
         symbol_type=TypeSymbolType.UsStock,
         candle="2024-01-01 10:00:00",  # different here

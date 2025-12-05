@@ -2,10 +2,10 @@
 from abc import abstractmethod
 from typing import List
 from xno.backtest import BacktestVnFutures
-from xno.strategy.strategy_runner import StrategyRunner
+from xno.strategy.strategy_runner import BaseRunner
 from xno.models import (
     AdvancedConfig,
-    StrategyConfig,
+    BotConfig,
     TypeAction,
     TypeSymbolType,
     TypeTradeMode,
@@ -14,11 +14,11 @@ from xno.models import (
 import logging
 from xno.utils.stock import round_to_lot
 
-class VnFutureRunner(StrategyRunner):
+class VnFutureRunner(BaseRunner):
     _lot_size = 1  # Derivatives typically trade in units of 1 contract
     def __init__(
             self,
-            config: StrategyConfig,
+            config: BotConfig,
             re_run: bool,
             send_data: bool,
     ):
@@ -114,8 +114,8 @@ if __name__ == "__main__":
 
 
     # Example usage
-    c = StrategyConfig(
-        strategy_id="fad40f3b-52a7-44d1-99cb-8d4b5aa257c5",
+    c = BotConfig(
+        id="fad40f3b-52a7-44d1-99cb-8d4b5aa257c5",
         symbol="VN30F1M",
         symbol_type=TypeSymbolType.VnFuture,
         timeframe="5min",

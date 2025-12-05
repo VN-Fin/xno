@@ -16,7 +16,7 @@ class StateSeries(DefaultStruct):
 
 
 @dataclass
-class StateHistory(DefaultStruct):
+class BotStateHistory(DefaultStruct):
     candles: List[int]
     prices: List[float]
     actions: List[TypeAction]

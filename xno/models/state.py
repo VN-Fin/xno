@@ -10,10 +10,11 @@ from xno.models.tp import (
 )
 from xno.utils.struct import DefaultStruct
 
+__all__ = ["BotState", "TradingState"]
 
 @dataclass
-class StrategyState(DefaultStruct):
-    strategy_id : str # Strategy identifier, use UUID format
+class BotState(DefaultStruct):
+    bot_id : str # Strategy identifier, use UUID format
     book_size: NumericType # Total cash available for trading
     symbol: str    # Trading symbol, e.g., "AAPL", "BTC-USD"
     symbol_type: TypeSymbolType
@@ -36,11 +37,11 @@ class StrategyState(DefaultStruct):
     pending_sell_weight: NumericType = 0.0    # Weight of the pending sell order
 
 
-TradingState = StrategyState
+TradingState = BotState
 
 if __name__ == "__main__":
     state = TradingState(
-        strategy_id="123e4567-e89b-12d3-a456-426614174000",
+        bot_id="123e4567-e89b-12d3-a456-426614174000",
         symbol="HSG",
         symbol_type=TypeSymbolType.VnStock,
         candle=datetime.datetime.now(),

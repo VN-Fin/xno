@@ -1,8 +1,6 @@
 from typing import Dict
 import logging
-import pandas as pd
-
-from xno.models.state_history import StateHistory
+from xno.models import BotTradeSummary
 
 
 class StrategyVisualizer:
@@ -13,19 +11,12 @@ class StrategyVisualizer:
           runner: StrategyRunner (must have bt_summary, or .backtest() method)
           name: Optional name (defaults to runner.strategy_id)
         """
-        if not hasattr(runner, 'bt_summary') or runner.bt_summary is None:
-            # Trigger backtest summary if missing
-            if hasattr(runner, 'backtest'):
-                summary = runner.get_backtest()
-            else:
-                raise ValueError("Runner must have .bt_summary or a .backtest() method!")
-        else:
-            summary = runner.bt_summary
+        summary = runner.backtest()
         # Extract info
-        self.state_history: StateHistory = summary.state_history  # Now a dict of lists
-        self.performance = getattr(summary, 'performance', None)
-        self.analysis = getattr(summary, 'analysis', None)
-        self.name = name or getattr(runner, 'strategy_id', None) or runner.__class__.__name__
+        self.summary: BotTradeSummary = summary  # Now a dict of lists
+        self.performance = getattr(self.summary, 'performance', None)
+        self.analysis = getattr(self.summary, 'analysis', None)
+        self.name = name or getattr(runner, 'bot_id', None) or runner.__class__.__name__
 
     def performance_summary(self) -> Dict:
         return {
@@ -51,10 +42,10 @@ class StrategyVisualizer:
         }
 
     def visualize(self):
-        if len(self.state_history.candles) == 0:
+        if len(self.summary.candles) == 0:
             logging.warning("No backtest data available to visualize.")
             return
-        df = self.state_history.get_dataframe()
+        df = self.summary.get_dataframe()
 
         performance = self.performance_summary()
         metric_names = list(sorted(performance.keys()))
@@ -96,7 +87,7 @@ class StrategyVisualizer:
         buy_df = df[df['actions'] == 1].copy()
         buy_df['date_str'] = buy_df.index.strftime('%Y-%m-%d')
         buy_df['time_str'] = buy_df.index.strftime('%H:%M:%S')
-        buy_df['balance_str'] = buy_df['balances'].astype(float).apply(lambda x: f"{x:,.2f}")
+        buy_df['balance_str'] = buy_df['equities'].astype(float).apply(lambda x: f"{x:,.2f}")
         buy_df['amount_str'] = buy_df['trade_sizes'].astype(float).apply(lambda x: f"{x:.2f}")
         buy_df['fee_str'] = buy_df['fees'].astype(float).apply(lambda x: f"{x:.2f}")
         buy_df['price_str'] = buy_df['prices'].astype(float).apply(lambda x: f"{x:.2f}")
@@ -117,7 +108,7 @@ class StrategyVisualizer:
         sell_df = df[df['actions'] == -1].copy()
         sell_df['date_str'] = sell_df.index.strftime('%Y-%m-%d')
         sell_df['time_str'] = sell_df.index.strftime('%H:%M:%S')
-        sell_df['balance_str'] = sell_df['balances'].astype(float).apply(lambda x: f"{x:,.2f}")
+        sell_df['balance_str'] = sell_df['equities'].astype(float).apply(lambda x: f"{x:,.2f}")
         sell_df['amount_str'] = sell_df['trade_sizes'].astype(float).apply(lambda x: f"{x:.2f}")
         sell_df['fee_str'] = sell_df['fees'].astype(float).apply(lambda x: f"{x:.2f}")
         sell_df['price_str'] = sell_df['prices'].astype(float).apply(lambda x: f"{x:.2f}")

@@ -1,5 +1,5 @@
 from xno.backtest.common import BaseBacktest, safe_divide, compound_returns
-from xno.models.bt_result import BacktestResult
+from xno.models import BotBacktestResult
 import numpy as np
 
 from xno.utils.stock import round_to_lot
@@ -12,7 +12,7 @@ class BacktestVnFutures(BaseBacktest):
     price_per_contract = 25_000_000
     fee_rate = 20_000
 
-    def __build__(self) -> BacktestResult:
+    def __build__(self) -> BotBacktestResult:
         if not (len(self.times) == len(self.prices) == len(self.positions) == len(self.trade_sizes)):
             raise ValueError("times, prices, positions, and trade_sizes must have the same length.")
 
@@ -54,7 +54,7 @@ class BacktestVnFutures(BaseBacktest):
         self.bm_returns[1:] = safe_divide(self.bm_equities[1:] - self.bm_equities[:-1], self.bm_equities[:-1])
         self.bm_cumrets = compound_returns(self.bm_returns)
 
-        return BacktestResult(
+        return BotBacktestResult(
             times=self.times,
             prices=self.prices,
             positions=self.positions,

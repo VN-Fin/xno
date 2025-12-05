@@ -1,6 +1,6 @@
 import abc
 from abc import abstractmethod
-from typing import Optional, Dict, List, Any
+from typing import Optional, List
 
 import numpy as np
 
@@ -8,11 +8,13 @@ from xno.models import (
     TradeAnalysis,
     TradePerformance,
     BacktestInput,
-    StrategyTradeSummary,
+    BotTradeSummary,
     TypeTradeMode,
-    StateHistory, StateSeries
+    BotStateHistory,
+    StateSeries,
+    SeriesMetric,
+    BotBacktestResultSummary
 )
-from xno.models.bt_result import BacktestResult
 import quantstats as qs
 import pandas as pd
 
@@ -27,6 +29,77 @@ def safe_divide(numer, denom, eps=1e-12):
     denom_safe = np.where(denom == 0, eps, denom)
     return numer / denom_safe
 
+minute_bar_per_day = 5.5 * 60 # 5.5 hours
+
+def get_minutes(tf):
+    tf = tf.lower()
+    if tf in ("1d", "d", "day"):
+        return minute_bar_per_day  # 6.5 trading hours
+
+    if tf in ("1w", "w", "week"):
+        return minute_bar_per_day * 5
+
+    if tf in ("1m", "1mo", "month"):
+        return minute_bar_per_day * 21
+
+    # intraday (1min, 3min, 5min, 15min, etc)
+    if "min" in tf:
+        return float(tf.replace("min", "").strip())
+
+    if "m" in tf:
+        return float(tf.replace("m", "").strip())
+
+    if "h" in tf:
+        hours = float(tf.replace("h", "").strip())
+        return hours * 60
+
+    raise ValueError(f"Unsupported timeframe: {tf}")
+
+def auto_window(timeframe: str) -> int:
+    """
+    Returns recommended rolling window size based on timeframe.
+    Window is measured in *number of bars*.
+    """
+
+    timeframe = timeframe.lower().strip()
+
+    # ---- Daily or higher ----
+    if timeframe in ("1d", "d", "day"):
+        return 126  # 6 months
+    if timeframe in ("1w", "w", "week"):
+        return 26           # 6 months of weekly bars
+    if timeframe in ("1m", "m", "month"):
+        return 12           # 1 year of monthly bars
+
+    # ---- Intraday ----
+    # VN market approx 285 minutes/day
+    minutes_per_day = 285
+    trading_days = 21  # 1 month
+
+    # Parse intraday like "1m", "3m", "5m", "15m", "30m", "1h"
+    # Convert timeframe into minutes per bar
+    if timeframe.endswith("m"):
+        try:
+            bar_minutes = int(timeframe.replace("m", ""))
+        except:
+            bar_minutes = 5
+    elif timeframe.endswith("h"):
+        try:
+            bar_minutes = int(timeframe.replace("h", "")) * 60
+        except:
+            bar_minutes = 60
+    else:
+        # Unknown format → fallback safe window
+        return 100
+
+    # Bars per day
+    bars_per_day = int(minutes_per_day / bar_minutes)
+
+    # 1-month rolling window for intraday
+    window = bars_per_day * trading_days
+
+    # ensure minimum and max sanity bounds
+    return max(20, min(window, 5000))
 
 class BaseBacktest(abc.ABC):
     fee_rate = None
@@ -35,16 +108,21 @@ class BaseBacktest(abc.ABC):
         self,
             inp: BacktestInput
     ):
+        self.timeframe = inp.timeframe
         self.bt_mode = TypeTradeMode(inp.bt_mode)
         self.actions = inp.actions
-        self.strategy_id = inp.strategy_id
+        self.bot_id = inp.bot_id
         self.init_cash = inp.book_size
         self.times = inp.times
         self.prices = inp.prices
         self.positions = inp.positions
         self.trade_sizes = inp.trade_sizes
+        self.periods = int(minute_bar_per_day / get_minutes(self.timeframe) * 250)
         # Calculated from code
         self.returns: np.ndarray | None = None
+        # Build return series
+        self.return_series: pd.Series | None = None
+        # bench series
         self.cum_rets: np.ndarray | None = None
         self.fees: np.ndarray | None = None
         self.pnls: np.ndarray | None = None
@@ -53,11 +131,38 @@ class BaseBacktest(abc.ABC):
         self.bm_pnls: np.ndarray | None = None
         self.bm_cumrets: np.ndarray | None = None
         self.bm_equities: np.ndarray | None = None
+        self.__build__()
+        self.return_series = self.build_returns()  # Build pandas series
         # tracking
         self.trade_analysis: Optional[TradeAnalysis] = None
         self.performance: Optional[TradePerformance] = None
-        self.state_history: StateHistory | None = None
-        self.bt_result = self.__build__()
+        self.state_history: BotStateHistory | None = None
+        # rolling defines
+        self.rolling_sharpe: np.ndarray | None = None
+        self.rolling_vol: np.ndarray | None = None
+        self.rolling_drawdown: np.ndarray | None = None
+
+    def build_returns(self):
+        if self.return_series is None:
+            self.return_series = pd.Series(
+                self.returns,
+                index=pd.to_datetime(self.times)
+            )
+        return self.return_series
+
+    # def rolling_metrics(self):
+    #     rolling_mean = self.return_series.rolling(self.periods).mean()
+    #     rolling_std  = self.return_series.rolling(self.periods).std()
+    #
+    #     rolling_sharpe =
+    #     return {
+    #         "rolling_sharpe": rolling_sharpe,
+    #         "rolling_vol": rolling_vol,
+    #         "rolling_drawdown": rolling_dd,
+    #         "rolling_max_drawdown": rolling_max_dd,
+    #         "rolling_beta": rolling_beta,
+    #         "rolling_corr": rolling_corr
+    #     }
 
     def state_history_series(self) -> List[StateSeries]:
         if self.state_history is not None:
@@ -66,7 +171,7 @@ class BaseBacktest(abc.ABC):
             raise Exception("state_history is None")
 
     @abstractmethod
-    def __build__(self) -> BacktestResult:
+    def __build__(self) -> BotBacktestResultSummary:
         raise NotImplementedError()
 
     def get_analysis(self) -> TradeAnalysis:
@@ -119,70 +224,57 @@ class BaseBacktest(abc.ABC):
     def get_performance(self) -> TradePerformance:
         if self.performance is not None:
             return self.performance
-        # Begin
-        rets = pd.Series(
-            self.returns,
-            index=pd.to_datetime(self.times)
-        )
-
-        # Infer frequency
-        freq = pd.infer_freq(rets.index)
-        is_daily_or_higher = freq in ['D', 'B', 'W', 'M']
         rs = TradePerformance(
-            avg_return=qs.stats.avg_return(rets),
-            cumulative_return=qs.stats.comp(rets),
-            cvar=qs.stats.cvar(rets),
-            gain_to_pain_ratio=qs.stats.gain_to_pain_ratio(rets),
-            kelly_criterion=qs.stats.kelly_criterion(rets),
-            max_drawdown=qs.stats.max_drawdown(rets),
-            omega=qs.stats.omega(rets),
-            profit_factor=qs.stats.profit_factor(rets),
-            recovery_factor=qs.stats.recovery_factor(rets),
-            sharpe=qs.stats.sharpe(rets),
-            sortino=qs.stats.sortino(rets),
-            tail_ratio=qs.stats.tail_ratio(rets),
-            ulcer_index=qs.stats.ulcer_index(rets),
-            var=qs.stats.value_at_risk(rets),
-            volatility=qs.stats.volatility(rets),
-            win_loss_ratio=qs.stats.win_loss_ratio(rets),
-            win_rate=qs.stats.win_rate(rets),
-            annual_return=qs.stats.cagr(rets),
-            calmar=qs.stats.calmar(rets),
+            avg_return=qs.stats.avg_return(self.return_series),
+            cumulative_return=qs.stats.comp(self.return_series),
+            cvar=qs.stats.cvar(self.return_series),
+            gain_to_pain_ratio=qs.stats.gain_to_pain_ratio(self.return_series),
+            kelly_criterion=qs.stats.kelly_criterion(self.return_series),
+            max_drawdown=qs.stats.max_drawdown(self.return_series),
+            omega=qs.stats.omega(self.return_series),
+            profit_factor=qs.stats.profit_factor(self.return_series),
+            recovery_factor=qs.stats.recovery_factor(self.return_series),
+            sharpe=qs.stats.sharpe(self.return_series, periods=self.periods),
+            sortino=qs.stats.sortino(self.return_series, periods=self.periods),
+            tail_ratio=qs.stats.tail_ratio(self.return_series),
+            ulcer_index=qs.stats.ulcer_index(self.return_series),
+            var=qs.stats.value_at_risk(self.return_series),
+            volatility=qs.stats.volatility(self.return_series, periods=self.periods),
+            win_loss_ratio=qs.stats.win_loss_ratio(self.return_series),
+            win_rate=qs.stats.win_rate(self.return_series),
+            annual_return=qs.stats.cagr(self.return_series, periods=self.periods),
+            calmar=qs.stats.calmar(self.return_series, periods=self.periods)
         )
-
-        # Only compute annualized metrics if daily or higher
-        if is_daily_or_higher:
-            rs.annual_return = qs.stats.cagr(rets)
-            rs.calmar = qs.stats.calmar(rets)
 
         self.performance = rs
         return self.performance
 
-    def summarize(self) -> StrategyTradeSummary:
-        self.state_history = StateHistory(
-            candles=self.times.tolist(),
-            prices=self.prices.tolist(),
-            actions=self.actions,
-            positions=self.positions.tolist(),
-            trade_sizes=self.trade_sizes.tolist(),
-            returns=self.returns.tolist(),
-            pnls=self.pnls.tolist(),
-            cumrets=self.cum_rets.tolist(),
-            balances=self.equities.tolist(),
-            fees=self.fees.tolist(),
-            bm_returns=self.bm_returns.tolist(),
-            bm_pnls=self.bm_pnls.tolist(),
-            bm_cumrets=self.bm_cumrets.tolist(),
-            bm_balances=self.bm_equities.tolist(),
-        )
-        return StrategyTradeSummary(
-            strategy_id=self.strategy_id,
+    def summarize(self) -> BotTradeSummary:
+        list_times = (self.times.astype('int') / 1e9).tolist()
+        series = {
+            "actions": SeriesMetric("actions", times=list_times, values=self.actions),
+            "prices": SeriesMetric("prices", times=list_times, values=self.prices),
+            "returns": SeriesMetric("returns", times=list_times, values=self.returns.tolist()),
+            "cumrets": SeriesMetric("cumrets", times=list_times, values=self.cum_rets.tolist()),
+            "fees": SeriesMetric("fees", times=list_times, values=self.fees.tolist()),
+            "pnls": SeriesMetric("pnls", times=list_times, values=self.pnls.tolist()),
+            "trade_sizes": SeriesMetric("trade_sizes", times=list_times, values=self.trade_sizes.tolist()),
+            "equities": SeriesMetric("equities", times=list_times, values=self.equities.tolist()),
+            "bm_returns": SeriesMetric("bm_returns", times=list_times, values=self.bm_returns.tolist()),
+            "bm_pnls": SeriesMetric("bm_pnls", times=list_times, values=self.bm_pnls.tolist()),
+            "bm_cumrets": SeriesMetric("bm_cumrets", times=list_times, values=self.bm_cumrets.tolist()),
+            "bm_equities": SeriesMetric("bm_equities", times=list_times, values=self.bm_equities.tolist()),
+        }
+        return BotTradeSummary(
+            total_candles=len(self.times),
+            bot_id=self.bot_id,
             init_cash=self.init_cash,
             from_time=self.times[0],
             to_time=self.times[-1],
             analysis=self.get_analysis(),
-            performance=self.get_performance(),
-            state_history=self.state_history,
             bt_mode=self.bt_mode,
+            performance=self.get_performance(),
+            series=series,
+            candles=list_times,
         )
 

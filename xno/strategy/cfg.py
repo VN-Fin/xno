@@ -1,22 +1,20 @@
 import logging
 from typing import Iterable
-
-from cachetools.func import ttl_cache
 from sqlalchemy import text
 
 from xno import settings
 from xno.connectors.semaphore import DistributedSemaphore
 from xno.connectors.sql import SqlSession
-from xno.models import AdvancedConfig, StrategyConfig
+from xno.models import AdvancedConfig, BotConfig
 from xno.models import TypeTradeMode, TypeEngine
 from contextlib import ExitStack
 
 
 
-class StrategyConfigLoader:
+class BotConfigLoader:
     @classmethod
-    def get_live_strategy_configs(cls, symbol_type, engine) -> Iterable[StrategyConfig]:
-        live_strategy_query = text("""
+    def get_live_bot_configs(cls, symbol_type, engine) -> Iterable[BotConfig]:
+        query = text("""
            SELECT id,
                   symbol,
                   symbol_type,
@@ -24,7 +22,7 @@ class StrategyConfigLoader:
                   live            as result,
                   advanced_config as advanced_config,
                   engine          as engine
-           FROM alpha.strategy_overview
+           FROM alpha.strategy_bots
            WHERE engine = :engine
              AND symbol_type = :symbol_type
              AND stage = 'live'
@@ -35,7 +33,7 @@ class StrategyConfigLoader:
             stack.enter_context(DistributedSemaphore())
             session = stack.enter_context(SqlSession(settings.execution_db_name))
             result_iter = session.execute(
-                live_strategy_query,
+                query,
                 {"engine": engine, "symbol_type": symbol_type},
             )
 
@@ -51,8 +49,8 @@ class StrategyConfigLoader:
                 )
                 continue
 
-            yield StrategyConfig(
-                strategy_id=str(row.id),
+            yield BotConfig(
+                id=str(row.id),
                 symbol=row.symbol,
                 symbol_type=row.symbol_type,
                 timeframe=row.timeframe,
@@ -65,8 +63,8 @@ class StrategyConfigLoader:
             )
 
     @classmethod
-    def get_config(cls, strategy_id: str, mode: TypeTradeMode) -> StrategyConfig | None:
-        logging.info(f"Getting config for strategy_id={strategy_id}, mode={mode}")
+    def get_config(cls, bot_id: str, mode: TypeTradeMode) -> BotConfig | None:
+        logging.info(f"Getting config for bot_id={bot_id}, mode={mode}")
         column = mode.__str__()
         query = f"""
             SELECT
@@ -77,8 +75,8 @@ class StrategyConfigLoader:
                 {column} as result,
                 advanced_config as advanced_config,
                 engine as engine
-            FROM alpha.strategy_overview
-            WHERE id = :strategy_id
+            FROM alpha.strategy_bots
+            WHERE id = :bot_id
             LIMIT 1
         """
         # Lock to ensure thread-safe read
@@ -87,7 +85,7 @@ class StrategyConfigLoader:
             session = stack.enter_context(SqlSession(settings.execution_db_name))
             result = session.execute(
                 text(query),
-                {'strategy_id': strategy_id},
+                {'bot_id': bot_id},
             )
 
         row = result.fetchone()
@@ -98,8 +96,8 @@ class StrategyConfigLoader:
         run_to = row.result['to']
         init_cash = row.result['cash']
         # Return the config with the appropriate run_from and run_to
-        return StrategyConfig(
-            strategy_id=row.id.__str__(),
+        return BotConfig(
+            id=row.id.__str__(),
             symbol=row.symbol,
             symbol_type=row.symbol_type,
             timeframe=row.timeframe,
@@ -115,13 +113,13 @@ class StrategyConfigLoader:
 if __name__ == "__main__":
     # Initial load
     # Example usage
-    config = StrategyConfigLoader.get_config("1569c66133af50d05a5c45715031fcc8", TypeTradeMode.Train)
+    config = BotConfigLoader.get_config("1569c66133af50d05a5c45715031fcc8", TypeTradeMode.Train)
     print(config.to_json())  # to string
     print("=====================================================================================")
-    config = StrategyConfigLoader.get_config("94871eaf8becd88290130c77a90fb4a5", TypeTradeMode.Train)
+    config = BotConfigLoader.get_config("94871eaf8becd88290130c77a90fb4a5", TypeTradeMode.Train)
     print(config.to_json())  # to string
 
-    configs = StrategyConfigLoader.get_live_strategy_configs("VnStock", TypeEngine.AIBot)
+    configs = BotConfigLoader.get_live_bot_configs("VnStock", TypeEngine.AIBot)
     print("Live strategy config len:", len(list(configs)))
     #
     # config = StrategyConfigLoader.get_config(uuid.uuid4().__str__(), AllowedTradeMode.BackTrade, "")

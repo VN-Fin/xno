@@ -1,12 +1,12 @@
 from xno.backtest.common import BaseBacktest, safe_divide, compound_returns
-from xno.models.bt_result import BacktestResult
+from xno.models.result import BotBacktestResult
 import numpy as np
 
 
 class BacktestVnStocks(BaseBacktest):
     fee_rate = 0.0015  # 0.15
 
-    def __build__(self) -> BacktestResult:
+    def __build__(self) -> BotBacktestResult:
         if not (len(self.times) == len(self.prices) == len(self.positions) == len(self.trade_sizes)):
             raise ValueError("times, prices, positions, and trade_sizes must have the same length.")
 
@@ -46,7 +46,7 @@ class BacktestVnStocks(BaseBacktest):
         self.bm_cumrets = compound_returns(self.bm_returns)
         self.bm_pnls = self.bm_returns - self.init_cash
 
-        return BacktestResult(
+        return BotBacktestResult(
             times=self.times,
             prices=self.prices,
             positions=self.positions,

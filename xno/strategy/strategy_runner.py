@@ -7,14 +7,14 @@ from xno import settings
 from xno.backtest.common import BaseBacktest
 from xno.connectors.rd import RedisClient
 from xno.models import (
-    StrategyState,
-    StrategySignal,
+    BotState,
+    BotSignal,
     TypeAction,
     FieldInfo,
     TypeEngine,
     AdvancedConfig,
-    StrategyTradeSummary,
-    StrategyConfig,
+    BotTradeSummary,
+    BotConfig,
     TypeSymbolType
 )
 import pandas as pd
@@ -49,13 +49,13 @@ def get_bt_class():
     pass
 
 
-class StrategyRunner(ABC):
+class BaseRunner(ABC):
     """
     The base class for running a trading strategy.
     """
     def __init__(
             self,
-            config: StrategyConfig,
+            config: BotConfig,
             re_run: bool,
             send_data: bool,
             bt_cls: Type[BaseBacktest]
@@ -69,7 +69,7 @@ class StrategyRunner(ABC):
         self.bt_cls = bt_cls
         self.cfg = config
         if self.cfg is None:
-            raise RuntimeError(f"Strategy config not found for strategy_id={self.strategy_id} and mode={self.mode}")
+            raise RuntimeError(f"Strategy config not found for strategy_id={self.bot_id} and mode={self.mode}")
         else:
             try:
                 self.run_to = pd.Timestamp(self.cfg.run_to)
@@ -82,7 +82,7 @@ class StrategyRunner(ABC):
             self.init_cash = self.cfg.init_cash
             self.run_engine = self.cfg.engine
             self.symbol_type = self.cfg.symbol_type
-            self.strategy_id = config.strategy_id
+            self.bot_id = config.id
             self.mode = config.mode
 
         self.send_data = send_data
@@ -98,7 +98,7 @@ class StrategyRunner(ABC):
         self.re_run = re_run
         self.datas: pd.DataFrame = pd.DataFrame()
 
-        self.current_state: StrategyState | None = None
+        self.current_state: BotState | None = None
         self.pending_sell_pos = 0.0
         self.current_time = None
         self.signals: List[float] | None = None
@@ -112,7 +112,7 @@ class StrategyRunner(ABC):
         self.ht_actions: List[TypeAction] = []
         # Data fields to load
         self.data_fields: Dict[str, FieldInfo] = {}
-        self.bt_summary: Optional[StrategyTradeSummary] = None
+        self.bt_summary: Optional[BotTradeSummary] = None
 
     def add_field(self, field_id: str, field_name: str, ticker: str | None = None):
         """
@@ -140,7 +140,8 @@ class StrategyRunner(ABC):
 
     def get_backtest_input(self) -> BacktestInput:
         return BacktestInput(
-            strategy_id=self.strategy_id,
+            bot_id=self.bot_id,
+            timeframe=self.timeframe,
             bt_mode=self.mode,
             bt_cls=self.bt_cls,
             symbol=self.symbol,
@@ -234,15 +235,15 @@ class StrategyRunner(ABC):
         """
         # Double check mode
         if self.mode != TypeTradeMode.Live:
-            logging.info(f"Mode is {self.mode}, skipping sending live signal for strategy_id={self.strategy_id}")
+            logging.info(f"Mode is {self.mode}, skipping sending live signal for bot_id={self.bot_id}")
             return
         state = self.current_state
-        strategy_id = self.strategy_id
+        bot_id = self.bot_id
         # Retrieve previous signal JSON (bytes or str)
-        prev_raw = RedisClient.hget(name=self.redis_latest_signal_key, key=strategy_id)
+        prev_raw = RedisClient.hget(name=self.redis_latest_signal_key, key=bot_id)
         # Build current signal model
-        current_signal = StrategySignal(
-            strategy_id=state.strategy_id,
+        current_signal = BotSignal(
+            bot_id=state.bot_id,
             symbol=state.symbol,
             symbol_type=self.symbol_type,
             candle=state.candle,
@@ -254,10 +255,10 @@ class StrategyRunner(ABC):
         )
         if prev_raw is not None:
             # Load signal
-            prev_signal = StrategySignal.from_str(prev_raw)
+            prev_signal = BotSignal.from_str(prev_raw)
             if current_signal == prev_signal:
                 # Skip logging each time; use debug for quiet mode
-                logging.debug(f"No signal change for {strategy_id}, skip sending.")
+                logging.debug(f"No signal change for bot_id={bot_id}, skip sending.")
                 return
 
         # Serialize once
@@ -265,17 +266,17 @@ class StrategyRunner(ABC):
         # Send to Kafka
         self.producer.produce(
             self.kafka_latest_signal_topic,
-            key=strategy_id,
+            key=bot_id,
             value=signal_json,
             callback=delivery_report
         )
         # Cache to Redis
         RedisClient.hset(
             name=self.redis_latest_signal_key,
-            key=strategy_id,
+            key=bot_id,
             value=signal_json,
         )
-        logging.info(f"Signal sent for {strategy_id}: {signal_json}")
+        logging.info(f"Signal sent for bot_id={bot_id}: {signal_json}")
 
     def __send_state__(self):
         """
@@ -284,20 +285,20 @@ class StrategyRunner(ABC):
         """
         # Double check mode
         if self.mode != TypeTradeMode.Live:
-            logging.info(f"Mode is {self.mode}, skipping sending live state for strategy_id={self.strategy_id}")
+            logging.info(f"Mode is {self.mode}, skipping sending live state for strategy_id={self.bot_id}")
             return
         current_state_str = self.current_state.to_json()
         logging.debug(f"Sending latest state {current_state_str}")
         self.producer.produce(
             self.kafka_latest_state_topic,
-            key=self.strategy_id,
+            key=self.bot_id,
             value=current_state_str,
             callback=delivery_report
         )
         # Set to redis
         RedisClient.hset(
             name=self.redis_latest_state_key,
-            key=self.strategy_id,
+            key=self.bot_id,
             value=current_state_str,
         )
 
@@ -308,7 +309,7 @@ class StrategyRunner(ABC):
                 self.__send_signal__()
                 self.__send_state__()
         else:
-            logging.info(f"send_data is False, skipping sending latest signal for strategy_id={self.strategy_id}")
+            logging.info(f"send_data is False, skipping sending latest signal for strategy_id={self.bot_id}")
 
     def complete(self):
         self.producer.flush()
@@ -320,7 +321,7 @@ class StrategyRunner(ABC):
         self.producer.produce(
             "ping",
             key="run_strategy",
-            value=f"Run strategy {self.strategy_id}. Re-run={self.re_run}",
+            value=f"Run strategy {self.bot_id}. Re-run={self.re_run}",
             callback=delivery_report
         )
         # Load data
@@ -331,8 +332,8 @@ class StrategyRunner(ABC):
         self.prices = self.datas["Close"].tolist()
         self.times = self.datas.index.tolist()
         # init the current state
-        self.current_state = StrategyState(
-            strategy_id=self.strategy_id,
+        self.current_state = BotState(
+            bot_id=self.bot_id,
             symbol=self.symbol,
             symbol_type=self.symbol_type,
             candle=self.times[0],
@@ -373,7 +374,7 @@ class StrategyRunner(ABC):
             self.ht_prices.append(self.current_state.current_price)
             self.ht_times.append(self.current_state.candle)
 
-        logging.debug(f"Finalizing strategy run and sending data for strategy_id={self.strategy_id}")
+        logging.debug(f"Finalizing strategy run and sending data for strategy_id={self.bot_id}")
         self.__done__()
 
     def stats(self):
@@ -409,10 +410,10 @@ class StrategyRunner(ABC):
             args=(bt_input_bytes, task_id, ),
         )
         sig.apply_async(task_id=task_id)
-        logging.info(f"Sending backtest task for strategy {self.strategy_id}. Task ID: {task_id}")
+        logging.info(f"Sending backtest task for strategy {self.bot_id}. Task ID: {task_id}")
 
     @timing
-    def backtest(self) -> StrategyTradeSummary:
+    def backtest(self) -> BotTradeSummary:
         """
         Run backtest for the strategy using BacktestCalculator.
         :return:
@@ -432,7 +433,7 @@ class StrategyRunner(ABC):
         if self.bt_summary is None:
             self.backtest()
 
-        visualizer = StrategyVisualizer(self, name=name or self.strategy_id)
+        visualizer = StrategyVisualizer(self, name=name or self.bot_id)
         visualizer.visualize()
 
 
@@ -440,7 +441,7 @@ if __name__ == "__main__":
     from xno.backtest import BacktestVnStocks
 
     # Test class for demonstrating add_field and load_data functionality
-    class TestStrategyRunner(StrategyRunner):
+    class TestStrategyRunner(BaseRunner):
         """
         Test implementation of StrategyRunner to test add_field and load_data
         """
@@ -454,8 +455,8 @@ if __name__ == "__main__":
             pass
 
 
-    strategy_config = StrategyConfig(
-        strategy_id="test",
+    strategy_config = BotConfig(
+        id="test",
         symbol="SSI",
         symbol_type=TypeSymbolType.VnStock,
         timeframe="D",

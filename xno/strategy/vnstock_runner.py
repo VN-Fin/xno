@@ -5,9 +5,9 @@ from datetime import timedelta
 from typing import List
 
 from xno.backtest import BacktestVnStocks
-from xno.strategy.strategy_runner import StrategyRunner
+from xno.strategy.strategy_runner import BaseRunner
 from xno.models import (
-    StrategyConfig,
+    BotConfig,
     AdvancedConfig,
     TypeAction,
     TypeSymbolType,
@@ -19,12 +19,12 @@ import logging
 from xno.utils.stock import round_to_lot
 
 
-class VnStockRunner(StrategyRunner):
+class VnStockRunner(BaseRunner):
     _hold_days = timedelta(days=3)
     _lot_size = 100
     def __init__(
             self,
-            config: StrategyConfig,
+            config: BotConfig,
             re_run: bool,
             send_data: bool,
     ):
@@ -150,8 +150,8 @@ if __name__ == "__main__":
             return self.datas
 
 
-    strategy_config = StrategyConfig(
-        strategy_id=uuid.uuid4().hex,
+    strategy_config = BotConfig(
+        id=uuid.uuid4().hex,
         symbol="SSI",
         symbol_type=TypeSymbolType.VnStock,
         timeframe="D",

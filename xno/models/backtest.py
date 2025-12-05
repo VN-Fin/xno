@@ -14,7 +14,8 @@ from xno.utils.struct import DefaultStruct
 
 @dataclass
 class BacktestInput(DefaultStruct):
-    strategy_id: str
+    bot_id: str
+    timeframe: str
     bt_mode: TypeTradeMode
     bt_cls: Any
     symbol : str
@@ -34,12 +35,13 @@ if __name__ == "__main__":
 
     st = BacktestInput(
         bt_mode=TypeTradeMode.Train,
-        strategy_id="strategy_id",
+        bot_id="strategy_id",
+        timeframe="1d",
         bt_cls=BacktestVnStocks,
         re_run=False,
         book_size=0.1,
         symbol="BTC",
-        symbol_type=TypeSymbolType.Crypto,
+        symbol_type=TypeSymbolType.CryptoFuture,
         actions=[TypeAction.Buy],
         times=np.linspace(0, 100, 100),
         prices=np.linspace(0, 100, 100),

@@ -275,6 +275,6 @@ class BaseBacktest(abc.ABC):
             bt_mode=self.bt_mode,
             performance=self.get_performance(),
             series=series,
-            candles=list_times,
+            candles=self.times.tolist(),
         )
 
